@@ -70,6 +70,10 @@ function sumWeightLifted(records) {
   return records.reduce((weight, record) => weight + (record.weightLifted || 0), 0);
 }
 
+function sumSleepHours(records) {
+  return records.reduce((hours, record) => hours + (record.hours || 0), 0);
+}
+
 function round(value) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
@@ -78,13 +82,14 @@ function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function calculatePerformanceScore({ protein, calories, workoutCount, runningDistanceKm }) {
+function calculatePerformanceScore({ protein, calories, workoutCount, runningDistanceKm, sleepHours }) {
   const proteinScore = Math.min((protein / 170) * 100, 100);
   const calorieScore = Math.min((calories / 2500) * 100, 100);
   const workoutScore = Math.min(workoutCount * 40, 100);
   const runningScore = Math.min((runningDistanceKm / 5) * 100, 100);
+  const sleepScore = Math.min((sleepHours / 8) * 100, 100);
 
-  return clampScore((proteinScore + calorieScore + workoutScore + runningScore) / 4);
+  return clampScore((proteinScore + calorieScore + workoutScore + runningScore + sleepScore) / 5);
 }
 
 function buildLastNDaySeries(records, numberOfDays, getValue, baseDate = new Date()) {
@@ -118,6 +123,7 @@ module.exports = {
   sumRunningDistance,
   sumWorkoutDuration,
   sumWeightLifted,
+  sumSleepHours,
   calculatePerformanceScore,
   buildLastNDaySeries,
   buildYesterdayDeltaText,

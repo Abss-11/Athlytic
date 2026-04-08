@@ -37,6 +37,9 @@ const nutritionLogs = [
 const runningSessions = [
 ];
 
+const sleepLogs = [
+];
+
 const goals = [
 ];
 
@@ -71,6 +74,7 @@ module.exports = {
   workouts,
   nutritionLogs,
   runningSessions,
+  sleepLogs,
   goals,
   achievements,
   communityPosts,

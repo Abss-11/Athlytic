@@ -6,6 +6,7 @@ const authRoutes = require("./routes/authRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const nutritionRoutes = require("./routes/nutritionRoutes");
 const runningRoutes = require("./routes/runningRoutes");
+const sleepRoutes = require("./routes/sleepRoutes");
 const workoutRoutes = require("./routes/workoutRoutes");
 const goalRoutes = require("./routes/goalRoutes");
 const communityRoutes = require("./routes/communityRoutes");
@@ -27,7 +28,7 @@ app.get("/api", (_req, res) => {
   res.json({
     name: "Athlytic API",
     status: "healthy",
-    modules: ["auth", "dashboard", "nutrition", "running", "workouts", "goals", "community"],
+    modules: ["auth", "dashboard", "nutrition", "running", "sleep", "workouts", "goals", "community"],
   });
 });
 
@@ -35,6 +36,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/nutrition", nutritionRoutes);
 app.use("/api/running", runningRoutes);
+app.use("/api/sleep", sleepRoutes);
 app.use("/api/workouts", workoutRoutes);
 app.use("/api/goals", goalRoutes);
 app.use("/api/community", communityRoutes);

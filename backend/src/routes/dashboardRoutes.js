@@ -1,15 +1,17 @@
 const express = require("express");
-const { dashboardSummary, goals, nutritionLogs, runningSessions, workouts } = require("../data/sampleData");
+const { dashboardSummary, goals, nutritionLogs, runningSessions, sleepLogs, workouts } = require("../data/sampleData");
 const { protect } = require("../middleware/auth");
 const Goal = require("../models/Goal");
 const NutritionLog = require("../models/NutritionLog");
 const RunningData = require("../models/RunningData");
+const SleepLog = require("../models/SleepLog");
 const Workout = require("../models/Workout");
 const { listRecords } = require("../utils/persistence");
 const {
   filterRecordsForDay,
   sumNutrition,
   sumRunningDistance,
+  sumSleepHours,
   sumWorkoutDuration,
   sumWeightLifted,
   calculatePerformanceScore,
@@ -24,6 +26,7 @@ router.get("/athlete", protect, async (_req, res) => {
   const liveGoals = await listRecords({ model: Goal, fallback: goals });
   const liveNutritionLogs = await listRecords({ model: NutritionLog, fallback: nutritionLogs });
   const liveRunningSessions = await listRecords({ model: RunningData, fallback: runningSessions });
+  const liveSleepLogs = await listRecords({ model: SleepLog, fallback: sleepLogs });
   const liveWorkouts = await listRecords({ model: Workout, fallback: workouts });
   const todayNutritionLogs = filterRecordsForDay(liveNutritionLogs, 0);
   const yesterdayNutritionLogs = filterRecordsForDay(liveNutritionLogs, -1);
@@ -31,21 +34,27 @@ router.get("/athlete", protect, async (_req, res) => {
   const yesterdayWorkouts = filterRecordsForDay(liveWorkouts, -1);
   const todayRunningSessions = filterRecordsForDay(liveRunningSessions, 0);
   const yesterdayRunningSessions = filterRecordsForDay(liveRunningSessions, -1);
+  const todaySleepLogs = filterRecordsForDay(liveSleepLogs, 0);
+  const yesterdaySleepLogs = filterRecordsForDay(liveSleepLogs, -1);
   const todayNutrition = sumNutrition(todayNutritionLogs);
   const yesterdayNutrition = sumNutrition(yesterdayNutritionLogs);
   const todayDistanceKm = round(sumRunningDistance(todayRunningSessions));
   const yesterdayDistanceKm = round(sumRunningDistance(yesterdayRunningSessions));
+  const todaySleepHours = round(sumSleepHours(todaySleepLogs));
+  const yesterdaySleepHours = round(sumSleepHours(yesterdaySleepLogs));
   const todayScore = calculatePerformanceScore({
     protein: todayNutrition.protein,
     calories: todayNutrition.calories,
     workoutCount: todayWorkouts.length,
     runningDistanceKm: todayDistanceKm,
+    sleepHours: todaySleepHours,
   });
   const yesterdayScore = calculatePerformanceScore({
     protein: yesterdayNutrition.protein,
     calories: yesterdayNutrition.calories,
     workoutCount: yesterdayWorkouts.length,
     runningDistanceKm: yesterdayDistanceKm,
+    sleepHours: yesterdaySleepHours,
   });
   const workoutSeries = buildLastNDaySeries(liveWorkouts, 7, sumWorkoutDuration);
   const proteinSeries = buildLastNDaySeries(liveNutritionLogs, 7, (records) => sumNutrition(records).protein);
@@ -66,6 +75,9 @@ router.get("/athlete", protect, async (_req, res) => {
   if (todayWorkouts.length > yesterdayWorkouts.length) {
     aiInsights.push("Workout consistency is up compared with yesterday.");
   }
+  if (todaySleepHours > 0 && todaySleepHours < 7) {
+    aiInsights.push("Sleep is below 7 hours today. Recovery may be impacted.");
+  }
 
   res.json({
     performanceScore: todayScore,
@@ -83,8 +95,8 @@ router.get("/athlete", protect, async (_req, res) => {
         target: 2500,
       },
       sleep: {
-        today: dashboardSummary.athlete.sleepHours || 0,
-        yesterday: dashboardSummary.athlete.sleepHours || 0,
+        today: todaySleepHours,
+        yesterday: yesterdaySleepHours,
         target: 8,
       },
       workouts: {
@@ -102,6 +114,7 @@ router.get("/athlete", protect, async (_req, res) => {
     deltas: {
       protein: buildYesterdayDeltaText(todayNutrition.protein, yesterdayNutrition.protein, "g"),
       calories: buildYesterdayDeltaText(todayNutrition.calories, yesterdayNutrition.calories, " kcal"),
+      sleep: buildYesterdayDeltaText(todaySleepHours, yesterdaySleepHours, "h"),
       performanceScore: buildYesterdayDeltaText(todayScore, yesterdayScore),
     },
     charts: {
@@ -164,6 +177,7 @@ router.get("/athlete", protect, async (_req, res) => {
     workouts: todayWorkouts,
     nutritionLogs: todayNutritionLogs,
     runningSessions: todayRunningSessions,
+    sleepLogs: todaySleepLogs,
   });
 });
 

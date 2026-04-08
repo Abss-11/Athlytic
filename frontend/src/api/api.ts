@@ -43,6 +43,12 @@ export const runningApi = {
   create: (payload: Record<string, unknown>) => api.post("/running", payload),
 };
 
+export const sleepApi = {
+  list: () => api.get("/sleep"),
+  summary: () => api.get("/sleep/summary"),
+  create: (payload: Record<string, unknown>) => api.post("/sleep", payload),
+};
+
 export const goalApi = {
   list: () => api.get("/goals"),
   create: (payload: Record<string, unknown>) => api.post("/goals", payload),
