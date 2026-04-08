@@ -42,36 +42,38 @@ export default function AthleteDashboardPage() {
         const response = await dashboardApi.getAthleteDashboard();
         const data = response.data;
         const nutritionLogs = Array.isArray(data.nutritionLogs) ? data.nutritionLogs : [];
-        const workouts = Array.isArray(data.workouts) ? data.workouts : [];
-        const runningSessions = Array.isArray(data.runningSessions) ? data.runningSessions : [];
         const score = typeof data.performanceScore === "number" ? data.performanceScore : 0;
-        const proteinTotal = nutritionLogs.reduce((sum: number, item: { protein?: number }) => sum + (item.protein || 0), 0);
-        const calorieTotal = nutritionLogs.reduce((sum: number, item: { calories?: number }) => sum + (item.calories || 0), 0);
+        const dailyStats = data.dailyStats || {};
+        const charts = data.charts || {};
+        const proteinToday = dailyStats.protein?.today || 0;
+        const proteinTarget = dailyStats.protein?.target || 170;
+        const caloriesToday = dailyStats.calories?.today || 0;
+        const sleepToday = dailyStats.sleep?.today || 0;
 
         setPerformanceScore(score);
         setStats([
           {
             label: "Protein intake",
-            value: `${proteinTotal}g / 170g`,
-            delta: nutritionLogs.length === 0 ? "No meals logged yet" : `${Math.round((proteinTotal / 170) * 100)}% of target`,
-            tone: proteinTotal > 0 ? "positive" : "neutral",
+            value: `${proteinToday}g / ${proteinTarget}g`,
+            delta: data.deltas?.protein || "No change vs yesterday",
+            tone: proteinToday > 0 ? "positive" : "neutral",
           },
           {
             label: "Calories",
-            value: `${calorieTotal} kcal`,
-            delta: nutritionLogs.length === 0 ? "0% of target" : `${Math.round((calorieTotal / 2500) * 100)}% of target`,
-            tone: calorieTotal > 0 ? "positive" : "neutral",
+            value: `${caloriesToday} kcal`,
+            delta: data.deltas?.calories || "No change vs yesterday",
+            tone: caloriesToday > 0 ? "positive" : "neutral",
           },
           {
             label: "Sleep quality",
-            value: `${data.sleepHours ?? 0} hrs`,
-            delta: data.sleepHours ? "Live recovery data loaded" : "No sleep data yet",
-            tone: data.sleepHours ? "positive" : "neutral",
+            value: `${sleepToday} hrs`,
+            delta: sleepToday ? "Compared with yesterday" : "No sleep data yet",
+            tone: sleepToday ? "positive" : "neutral",
           },
           {
             label: "Performance score",
             value: `${score} / 100`,
-            delta: score > 0 ? "Built from your current data" : "Start tracking to build your score",
+            delta: data.deltas?.performanceScore || "No change vs yesterday",
             tone: score > 0 ? "positive" : "neutral",
           },
         ]);
@@ -104,71 +106,10 @@ export default function AthleteDashboardPage() {
           );
         }
 
-        setWorkoutChartData({
-          labels: workouts.map((workout: { focus: string }) => workout.focus),
-          datasets: workouts.length
-            ? [
-                {
-                  label: "Duration (min)",
-                  data: workouts.map((workout: { durationMinutes?: number }) => workout.durationMinutes ?? 0),
-                  borderColor: "#4c80ff",
-                  backgroundColor: "rgba(76, 128, 255, 0.18)",
-                  tension: 0.4,
-                  fill: true,
-                },
-              ]
-            : [],
-        });
-
-        setNutritionChartData({
-          labels: nutritionLogs.map((entry: { mealName: string }) => entry.mealName),
-          datasets: nutritionLogs.length
-            ? [
-                {
-                  label: "Protein",
-                  data: nutritionLogs.map((entry: { protein?: number }) => entry.protein ?? 0),
-                  backgroundColor: "#7dff52",
-                  borderRadius: 12,
-                },
-                {
-                  label: "Carbs",
-                  data: nutritionLogs.map((entry: { carbs?: number }) => entry.carbs ?? 0),
-                  backgroundColor: "#4c80ff",
-                  borderRadius: 12,
-                },
-              ]
-            : [],
-        });
-
-        setRunningChartData({
-          labels: runningSessions.map((_session: { pace: string }, index: number) => `Run ${index + 1}`),
-          datasets: runningSessions.length
-            ? [
-                {
-                  label: "Distance (km)",
-                  data: runningSessions.map((session: { distanceKm?: number }) => session.distanceKm ?? 0),
-                  borderColor: "#7dff52",
-                  backgroundColor: "rgba(125, 255, 82, 0.16)",
-                  tension: 0.35,
-                  fill: true,
-                },
-              ]
-            : [],
-        });
-
-        setStrengthChartData({
-          labels: workouts.map((workout: { focus: string }) => workout.focus),
-          datasets: workouts.length
-            ? [
-                {
-                  label: "Weight lifted",
-                  data: workouts.map((workout: { weightLifted?: number }) => workout.weightLifted ?? 0),
-                  backgroundColor: ["#4c80ff", "#7dff52", "#123d9a", "#9ad4ff", "#7bb6ff"],
-                  borderRadius: 10,
-                },
-              ]
-            : [],
-        });
+        setWorkoutChartData(charts.weeklyWorkoutProgress || { labels: [], datasets: [] });
+        setNutritionChartData(charts.nutritionTrend || { labels: [], datasets: [] });
+        setRunningChartData(charts.runningPerformance || { labels: [], datasets: [] });
+        setStrengthChartData(charts.strengthImprovement || { labels: [], datasets: [] });
       } catch (error) {
         if (!axios.isAxiosError(error)) {
           console.error(error);

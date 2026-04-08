@@ -14,7 +14,10 @@ router.post("/", async (req, res) => {
   const entry = await createRecord({
     model: Workout,
     fallback: workouts,
-    payload: req.body,
+    payload: {
+      ...req.body,
+      loggedAt: new Date(),
+    },
     transform: (payload, length) => ({
       id: `workout-${length + 1}`,
       ...payload,

@@ -107,6 +107,36 @@ In this mode:
 - React routes like `/dashboard` work from the same domain
 - API routes stay available under `/api/*`
 
+## Deploying On Vercel
+
+Athlytic is now structured so Vercel can:
+
+- build the frontend from `frontend/`
+- serve the built SPA from `frontend/dist`
+- run the Express backend as Vercel Functions under `/api/*`
+
+### Vercel setup
+
+1. Import the GitHub repository into Vercel
+2. Keep the project root as the repository root
+3. Vercel will use [vercel.json](/Users/abhaychaturvedi/Desktop/Athlytic/vercel.json)
+4. Add these environment variables in Vercel:
+
+```bash
+MONGODB_URI=your-mongodb-atlas-uri
+JWT_SECRET=your-strong-secret
+VERCEL=1
+```
+
+### What gets deployed
+
+- Frontend app routes like `/`, `/dashboard`, `/nutrition`
+- Backend API routes like `/api/auth/login`, `/api/nutrition`, `/api/goals`
+
+### Important note for Vercel
+
+For production on Vercel, use MongoDB Atlas rather than a local MongoDB instance, because Vercel Functions cannot connect to databases running only on your laptop.
+
 ## Demo Credentials
 
 - Athlete: `demo@athlytic.app` / `password123`

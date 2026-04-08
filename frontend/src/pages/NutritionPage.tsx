@@ -19,35 +19,46 @@ export default function NutritionPage() {
     fats: "",
   });
   const [entries, setEntries] = useState([
-    { label: "Protein", consumed: 0, target: 170, unit: "g" },
-    { label: "Carbs", consumed: 0, target: 250, unit: "g" },
-    { label: "Fats", consumed: 0, target: 75, unit: "g" },
-    { label: "Water", consumed: 0, target: 3.5, unit: "L" },
+    { label: "Protein", consumed: 0, target: 170, yesterday: 0, unit: "g" },
+    { label: "Carbs", consumed: 0, target: 250, yesterday: 0, unit: "g" },
+    { label: "Fats", consumed: 0, target: 75, yesterday: 0, unit: "g" },
+    { label: "Water", consumed: 0, target: 3.5, yesterday: 0, unit: "L" },
   ]);
 
   useEffect(() => {
     async function loadEntries() {
       try {
-        const response = await nutritionApi.list();
-        const totals = response.data.reduce(
-          (
-            acc: { protein: number; carbs: number; fats: number; calories: number; waterLiters: number },
-            entry: { protein: number; carbs: number; fats: number; calories: number; waterLiters?: number }
-          ) => ({
-            protein: acc.protein + (entry.protein || 0),
-            carbs: acc.carbs + (entry.carbs || 0),
-            fats: acc.fats + (entry.fats || 0),
-            calories: acc.calories + (entry.calories || 0),
-            waterLiters: acc.waterLiters + (entry.waterLiters || 0),
-          }),
-          { protein: 0, carbs: 0, fats: 0, calories: 0, waterLiters: 0 }
-        );
-
+        const response = await nutritionApi.summary();
+        const summary = response.data;
         setEntries([
-          { label: "Protein", consumed: totals.protein, target: 170, unit: "g" },
-          { label: "Carbs", consumed: totals.carbs, target: 250, unit: "g" },
-          { label: "Fats", consumed: totals.fats, target: 75, unit: "g" },
-          { label: "Water", consumed: Number(totals.waterLiters.toFixed(1)), target: 3.5, unit: "L" },
+          {
+            label: "Protein",
+            consumed: summary.today.protein,
+            target: summary.targets.protein,
+            yesterday: summary.yesterday.protein,
+            unit: "g",
+          },
+          {
+            label: "Carbs",
+            consumed: summary.today.carbs,
+            target: summary.targets.carbs,
+            yesterday: summary.yesterday.carbs,
+            unit: "g",
+          },
+          {
+            label: "Fats",
+            consumed: summary.today.fats,
+            target: summary.targets.fats,
+            yesterday: summary.yesterday.fats,
+            unit: "g",
+          },
+          {
+            label: "Water",
+            consumed: summary.today.waterLiters,
+            target: summary.targets.waterLiters,
+            yesterday: summary.yesterday.waterLiters,
+            unit: "L",
+          },
         ]);
       } catch (error) {
         if (!axios.isAxiosError(error)) {
@@ -76,14 +87,38 @@ export default function NutritionPage() {
     };
 
     await nutritionApi.create(payload);
-    setEntries((current) =>
-      current.map((entry) => {
-        if (entry.label === "Protein") return { ...entry, consumed: entry.consumed + payload.protein };
-        if (entry.label === "Carbs") return { ...entry, consumed: entry.consumed + payload.carbs };
-        if (entry.label === "Fats") return { ...entry, consumed: entry.consumed + payload.fats };
-        return entry;
-      })
-    );
+    const summaryResponse = await nutritionApi.summary();
+    const summary = summaryResponse.data;
+    setEntries([
+      {
+        label: "Protein",
+        consumed: summary.today.protein,
+        target: summary.targets.protein,
+        yesterday: summary.yesterday.protein,
+        unit: "g",
+      },
+      {
+        label: "Carbs",
+        consumed: summary.today.carbs,
+        target: summary.targets.carbs,
+        yesterday: summary.yesterday.carbs,
+        unit: "g",
+      },
+      {
+        label: "Fats",
+        consumed: summary.today.fats,
+        target: summary.targets.fats,
+        yesterday: summary.yesterday.fats,
+        unit: "g",
+      },
+      {
+        label: "Water",
+        consumed: summary.today.waterLiters,
+        target: summary.targets.waterLiters,
+        yesterday: summary.yesterday.waterLiters,
+        unit: "L",
+      },
+    ]);
     setForm({ mealName: "", calories: "", protein: "", carbs: "", fats: "" });
     pushToast("Nutrition entry saved.", "success");
   }
@@ -93,8 +128,8 @@ export default function NutritionPage() {
       <PageHeader
         eyebrow="Nutrition tracker"
         title="Log meals, monitor macros, and keep your fueling aligned with performance."
-        description="Track protein, carbs, fats, calories, and hydration while generating weekly nutrition reports and macro progress graphs."
-        badge="Food database live"
+        description="Macros now reset daily and compare against yesterday so every day starts from zero and tracks independently."
+        badge="Today vs yesterday"
       />
 
       <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
@@ -119,6 +154,7 @@ export default function NutritionPage() {
           <div className="mt-5 grid gap-5">
             {entries.map((macro) => {
               const value = (macro.consumed / macro.target) * 100;
+              const diff = macro.consumed - macro.yesterday;
               return (
                 <div key={macro.label}>
                   <div className="mb-2 flex items-center justify-between">
@@ -128,6 +164,11 @@ export default function NutritionPage() {
                         {macro.consumed}
                         {macro.unit} / {macro.target}
                         {macro.unit}
+                      </p>
+                      <p className="text-xs text-app-text-soft">
+                        Yesterday: {macro.yesterday}
+                        {macro.unit} ({diff > 0 ? `+${diff}` : diff}
+                        {macro.unit})
                       </p>
                     </div>
                     <span className="text-sm font-semibold text-app-text">{Math.round(value)}%</span>

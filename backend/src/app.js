@@ -14,6 +14,7 @@ const app = express();
 const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
 const frontendIndexPath = path.join(frontendDistPath, "index.html");
 const hasBuiltFrontend = fs.existsSync(frontendIndexPath);
+const isVercel = Boolean(process.env.VERCEL);
 
 app.use(
   cors({
@@ -38,7 +39,7 @@ app.use("/api/workouts", workoutRoutes);
 app.use("/api/goals", goalRoutes);
 app.use("/api/community", communityRoutes);
 
-if (hasBuiltFrontend) {
+if (!isVercel && hasBuiltFrontend) {
   app.use(express.static(frontendDistPath));
 
   app.use((req, res, next) => {
@@ -48,7 +49,7 @@ if (hasBuiltFrontend) {
 
     return res.sendFile(frontendIndexPath);
   });
-} else {
+} else if (!isVercel) {
   app.get("/", (_req, res) => {
     res.json({
       message: "Athlytic frontend build not found. Run `npm run build:full` from the project root.",

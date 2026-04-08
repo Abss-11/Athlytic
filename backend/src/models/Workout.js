@@ -10,6 +10,7 @@ const workoutSchema = new mongoose.Schema(
     weightLifted: Number,
     durationMinutes: Number,
     intensity: String,
+    loggedAt: Date,
   },
   { timestamps: true }
 );

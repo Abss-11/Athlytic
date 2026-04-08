@@ -29,6 +29,7 @@ export const dashboardApi = {
 
 export const nutritionApi = {
   list: () => api.get("/nutrition"),
+  summary: () => api.get("/nutrition/summary"),
   create: (payload: Record<string, unknown>) => api.post("/nutrition", payload),
 };
 
