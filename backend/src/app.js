@@ -3,6 +3,7 @@ const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 const authRoutes = require("./routes/authRoutes");
+const profileRoutes = require("./routes/profileRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const nutritionRoutes = require("./routes/nutritionRoutes");
 const runningRoutes = require("./routes/runningRoutes");
@@ -28,11 +29,12 @@ app.get("/api", (_req, res) => {
   res.json({
     name: "Athlytic API",
     status: "healthy",
-    modules: ["auth", "dashboard", "nutrition", "running", "sleep", "workouts", "goals", "community"],
+    modules: ["auth", "profile", "dashboard", "nutrition", "running", "sleep", "workouts", "goals", "community"],
   });
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/profile", profileRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/nutrition", nutritionRoutes);
 app.use("/api/running", runningRoutes);

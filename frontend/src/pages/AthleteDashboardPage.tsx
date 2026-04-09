@@ -154,7 +154,6 @@ export default function AthleteDashboardPage() {
     setIsSavingSleep(true);
     try {
       await sleepApi.create({
-        athleteId: "ath-1",
         hours: sleepHours,
       });
       pushToast("Sleep entry saved for today.", "success");

@@ -1,20 +1,37 @@
 const express = require("express");
 const { sleepLogs } = require("../data/sampleData");
+const { protect } = require("../middleware/auth");
 const SleepLog = require("../models/SleepLog");
 const { createRecord, listRecords } = require("../utils/persistence");
+const { getCurrentUser } = require("../utils/currentUser");
+const { buildMacroPlan } = require("../utils/macroPlanner");
 const { filterRecordsForDay, round, sumSleepHours } = require("../utils/dailyMetrics");
 
 const router = express.Router();
 
-router.get("/", async (_req, res) => {
+router.use(protect);
+
+function filterByAthlete(records, athleteId) {
+  if (!athleteId) {
+    return records;
+  }
+
+  return records.filter((record) => record.athleteId === athleteId);
+}
+
+router.get("/", async (req, res) => {
   const records = await listRecords({ model: SleepLog, fallback: sleepLogs });
-  res.json(records);
+  const scopedRecords = filterByAthlete(records, req.user?.sub);
+  res.json(scopedRecords);
 });
 
-router.get("/summary", async (_req, res) => {
+router.get("/summary", async (req, res) => {
   const records = await listRecords({ model: SleepLog, fallback: sleepLogs });
-  const todayRecords = filterRecordsForDay(records, 0);
-  const yesterdayRecords = filterRecordsForDay(records, -1);
+  const scopedRecords = filterByAthlete(records, req.user?.sub);
+  const todayRecords = filterRecordsForDay(scopedRecords, 0);
+  const yesterdayRecords = filterRecordsForDay(scopedRecords, -1);
+  const currentUser = await getCurrentUser(req);
+  const macroPlan = buildMacroPlan(currentUser?.profile || {});
 
   res.json({
     today: {
@@ -24,7 +41,7 @@ router.get("/summary", async (_req, res) => {
       hours: round(sumSleepHours(yesterdayRecords)),
     },
     targets: {
-      hours: 8,
+      hours: macroPlan.dailyTargets.sleepHours,
     },
   });
 });
@@ -35,6 +52,7 @@ router.post("/", async (req, res) => {
     fallback: sleepLogs,
     payload: {
       ...req.body,
+      athleteId: req.user?.sub,
       loggedAt: new Date(),
     },
     transform: (payload, length) => ({

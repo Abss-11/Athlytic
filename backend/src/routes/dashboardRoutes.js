@@ -7,6 +7,8 @@ const RunningData = require("../models/RunningData");
 const SleepLog = require("../models/SleepLog");
 const Workout = require("../models/Workout");
 const { listRecords } = require("../utils/persistence");
+const { getCurrentUser } = require("../utils/currentUser");
+const { buildMacroPlan } = require("../utils/macroPlanner");
 const {
   filterRecordsForDay,
   sumNutrition,
@@ -22,20 +24,37 @@ const {
 
 const router = express.Router();
 
-router.get("/athlete", protect, async (_req, res) => {
+function filterByAthlete(records, athleteId) {
+  if (!athleteId) {
+    return records;
+  }
+
+  return records.filter((record) => record.athleteId === athleteId);
+}
+
+router.get("/athlete", protect, async (req, res) => {
+  const athleteId = req.user?.sub;
+  const currentUser = await getCurrentUser(req);
+  const macroPlan = buildMacroPlan(currentUser?.profile || {});
+  const targets = macroPlan.dailyTargets;
   const liveGoals = await listRecords({ model: Goal, fallback: goals });
   const liveNutritionLogs = await listRecords({ model: NutritionLog, fallback: nutritionLogs });
   const liveRunningSessions = await listRecords({ model: RunningData, fallback: runningSessions });
   const liveSleepLogs = await listRecords({ model: SleepLog, fallback: sleepLogs });
   const liveWorkouts = await listRecords({ model: Workout, fallback: workouts });
-  const todayNutritionLogs = filterRecordsForDay(liveNutritionLogs, 0);
-  const yesterdayNutritionLogs = filterRecordsForDay(liveNutritionLogs, -1);
-  const todayWorkouts = filterRecordsForDay(liveWorkouts, 0);
-  const yesterdayWorkouts = filterRecordsForDay(liveWorkouts, -1);
-  const todayRunningSessions = filterRecordsForDay(liveRunningSessions, 0);
-  const yesterdayRunningSessions = filterRecordsForDay(liveRunningSessions, -1);
-  const todaySleepLogs = filterRecordsForDay(liveSleepLogs, 0);
-  const yesterdaySleepLogs = filterRecordsForDay(liveSleepLogs, -1);
+  const scopedGoals = athleteId ? liveGoals.filter((goal) => goal.athleteId === athleteId) : liveGoals;
+  const scopedNutritionLogs = filterByAthlete(liveNutritionLogs, athleteId);
+  const scopedRunningSessions = filterByAthlete(liveRunningSessions, athleteId);
+  const scopedSleepLogs = filterByAthlete(liveSleepLogs, athleteId);
+  const scopedWorkouts = filterByAthlete(liveWorkouts, athleteId);
+  const todayNutritionLogs = filterRecordsForDay(scopedNutritionLogs, 0);
+  const yesterdayNutritionLogs = filterRecordsForDay(scopedNutritionLogs, -1);
+  const todayWorkouts = filterRecordsForDay(scopedWorkouts, 0);
+  const yesterdayWorkouts = filterRecordsForDay(scopedWorkouts, -1);
+  const todayRunningSessions = filterRecordsForDay(scopedRunningSessions, 0);
+  const yesterdayRunningSessions = filterRecordsForDay(scopedRunningSessions, -1);
+  const todaySleepLogs = filterRecordsForDay(scopedSleepLogs, 0);
+  const yesterdaySleepLogs = filterRecordsForDay(scopedSleepLogs, -1);
   const todayNutrition = sumNutrition(todayNutritionLogs);
   const yesterdayNutrition = sumNutrition(yesterdayNutritionLogs);
   const todayDistanceKm = round(sumRunningDistance(todayRunningSessions));
@@ -48,6 +67,12 @@ router.get("/athlete", protect, async (_req, res) => {
     workoutCount: todayWorkouts.length,
     runningDistanceKm: todayDistanceKm,
     sleepHours: todaySleepHours,
+    targets: {
+      protein: targets.protein,
+      calories: targets.calories,
+      runningDistanceKm: targets.runningDistanceKm,
+      sleepHours: targets.sleepHours,
+    },
   });
   const yesterdayScore = calculatePerformanceScore({
     protein: yesterdayNutrition.protein,
@@ -55,19 +80,27 @@ router.get("/athlete", protect, async (_req, res) => {
     workoutCount: yesterdayWorkouts.length,
     runningDistanceKm: yesterdayDistanceKm,
     sleepHours: yesterdaySleepHours,
+    targets: {
+      protein: targets.protein,
+      calories: targets.calories,
+      runningDistanceKm: targets.runningDistanceKm,
+      sleepHours: targets.sleepHours,
+    },
   });
-  const workoutSeries = buildLastNDaySeries(liveWorkouts, 7, sumWorkoutDuration);
-  const proteinSeries = buildLastNDaySeries(liveNutritionLogs, 7, (records) => sumNutrition(records).protein);
-  const carbsSeries = buildLastNDaySeries(liveNutritionLogs, 7, (records) => sumNutrition(records).carbs);
-  const runningSeries = buildLastNDaySeries(liveRunningSessions, 7, sumRunningDistance);
-  const strengthSeries = buildLastNDaySeries(liveWorkouts, 7, sumWeightLifted);
+  const workoutSeries = buildLastNDaySeries(scopedWorkouts, 7, sumWorkoutDuration);
+  const proteinSeries = buildLastNDaySeries(scopedNutritionLogs, 7, (records) => sumNutrition(records).protein);
+  const carbsSeries = buildLastNDaySeries(scopedNutritionLogs, 7, (records) => sumNutrition(records).carbs);
+  const runningSeries = buildLastNDaySeries(scopedRunningSessions, 7, sumRunningDistance);
+  const strengthSeries = buildLastNDaySeries(scopedWorkouts, 7, sumWeightLifted);
 
   const aiInsights = [];
   if (todayNutrition.calories === 0 && todayWorkouts.length === 0 && todayDistanceKm === 0) {
     aiInsights.push("No activity logged for today yet. Start with one meal, workout, or run to begin tracking.");
   }
-  if (todayNutrition.protein < 170) {
-    aiInsights.push(`Protein is ${Math.max(0, 170 - todayNutrition.protein)}g below today's target.`);
+  if (todayNutrition.protein < targets.protein) {
+    aiInsights.push(
+      `Protein is ${Math.max(0, round(targets.protein - todayNutrition.protein))}g below today's target.`
+    );
   }
   if (todayDistanceKm > yesterdayDistanceKm) {
     aiInsights.push(`Running distance improved by ${round(todayDistanceKm - yesterdayDistanceKm)} km vs yesterday.`);
@@ -78,26 +111,29 @@ router.get("/athlete", protect, async (_req, res) => {
   if (todaySleepHours > 0 && todaySleepHours < 7) {
     aiInsights.push("Sleep is below 7 hours today. Recovery may be impacted.");
   }
+  for (const recommendation of macroPlan.aiAdvice.slice(0, 2)) {
+    aiInsights.push(recommendation);
+  }
 
   res.json({
     performanceScore: todayScore,
     performanceDelta: todayScore - yesterdayScore,
-    sleepHours: dashboardSummary.athlete.sleepHours || 0,
+    sleepHours: todaySleepHours,
     dailyStats: {
       protein: {
         today: round(todayNutrition.protein),
         yesterday: round(yesterdayNutrition.protein),
-        target: 170,
+        target: targets.protein,
       },
       calories: {
         today: round(todayNutrition.calories),
         yesterday: round(yesterdayNutrition.calories),
-        target: 2500,
+        target: targets.calories,
       },
       sleep: {
         today: todaySleepHours,
         yesterday: yesterdaySleepHours,
-        target: 8,
+        target: targets.sleepHours,
       },
       workouts: {
         today: todayWorkouts.length,
@@ -107,10 +143,11 @@ router.get("/athlete", protect, async (_req, res) => {
       runningDistance: {
         today: todayDistanceKm,
         yesterday: yesterdayDistanceKm,
-        target: 5,
+        target: targets.runningDistanceKm,
       },
     },
     aiInsights,
+    macroPlan,
     deltas: {
       protein: buildYesterdayDeltaText(todayNutrition.protein, yesterdayNutrition.protein, "g"),
       calories: buildYesterdayDeltaText(todayNutrition.calories, yesterdayNutrition.calories, " kcal"),
@@ -173,7 +210,7 @@ router.get("/athlete", protect, async (_req, res) => {
         ],
       },
     },
-    goals: liveGoals,
+    goals: scopedGoals,
     workouts: todayWorkouts,
     nutritionLogs: todayNutritionLogs,
     runningSessions: todayRunningSessions,

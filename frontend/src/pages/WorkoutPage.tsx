@@ -60,7 +60,6 @@ export default function WorkoutPage() {
     }
 
     const payload = {
-      athleteId: "ath-1",
       focus: form.focus,
       sets: Number(form.sets),
       reps: Number(form.reps),

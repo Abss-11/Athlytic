@@ -1,22 +1,40 @@
 const express = require("express");
 const { nutritionLogs } = require("../data/sampleData");
+const { protect } = require("../middleware/auth");
 const NutritionLog = require("../models/NutritionLog");
 const { createRecord, listRecords } = require("../utils/persistence");
+const { getCurrentUser } = require("../utils/currentUser");
+const { buildMacroPlan } = require("../utils/macroPlanner");
 const { filterRecordsForDay, sumNutrition, round } = require("../utils/dailyMetrics");
 
 const router = express.Router();
 
-router.get("/", async (_req, res) => {
+router.use(protect);
+
+function filterByAthlete(records, athleteId) {
+  if (!athleteId) {
+    return records;
+  }
+
+  return records.filter((record) => record.athleteId === athleteId);
+}
+
+router.get("/", async (req, res) => {
   const records = await listRecords({ model: NutritionLog, fallback: nutritionLogs });
-  res.json(records);
+  const scopedRecords = filterByAthlete(records, req.user?.sub);
+  res.json(scopedRecords);
 });
 
-router.get("/summary", async (_req, res) => {
+router.get("/summary", async (req, res) => {
   const records = await listRecords({ model: NutritionLog, fallback: nutritionLogs });
-  const todayRecords = filterRecordsForDay(records, 0);
-  const yesterdayRecords = filterRecordsForDay(records, -1);
+  const scopedRecords = filterByAthlete(records, req.user?.sub);
+  const todayRecords = filterRecordsForDay(scopedRecords, 0);
+  const yesterdayRecords = filterRecordsForDay(scopedRecords, -1);
   const todayTotals = sumNutrition(todayRecords);
   const yesterdayTotals = sumNutrition(yesterdayRecords);
+  const currentUser = await getCurrentUser(req);
+  const macroPlan = buildMacroPlan(currentUser?.profile || {});
+  const targets = macroPlan.dailyTargets;
 
   res.json({
     today: {
@@ -34,10 +52,15 @@ router.get("/summary", async (_req, res) => {
       waterLiters: round(yesterdayTotals.waterLiters),
     },
     targets: {
-      protein: 170,
-      carbs: 250,
-      fats: 75,
-      waterLiters: 3.5,
+      protein: targets.protein,
+      carbs: targets.carbs,
+      fats: targets.fats,
+      calories: targets.calories,
+      waterLiters: targets.waterLiters,
+    },
+    recommendations: {
+      aiAdvice: macroPlan.aiAdvice,
+      dietSuggestions: macroPlan.dietSuggestions,
     },
   });
 });
@@ -48,6 +71,7 @@ router.post("/", async (req, res) => {
     fallback: nutritionLogs,
     payload: {
       ...req.body,
+      athleteId: req.user?.sub,
       loggedAt: new Date(),
     },
     transform: (payload, length) => ({

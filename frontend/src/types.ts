@@ -56,3 +56,23 @@ export interface Achievement {
   label: string;
   description: string;
 }
+
+export interface MacroPlanTargets {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  waterLiters: number;
+  sleepHours: number;
+  runningDistanceKm: number;
+}
+
+export interface MacroPlan {
+  hasEnoughProfileData: boolean;
+  dailyTargets: MacroPlanTargets;
+  estimatedBmr: number | null;
+  estimatedTdee: number | null;
+  bmi: number | null;
+  aiAdvice: string[];
+  dietSuggestions: string[];
+}

@@ -24,12 +24,16 @@ export default function NutritionPage() {
     { label: "Fats", consumed: 0, target: 75, yesterday: 0, unit: "g" },
     { label: "Water", consumed: 0, target: 3.5, yesterday: 0, unit: "L" },
   ]);
+  const [aiAdvice, setAiAdvice] = useState<string[]>([]);
+  const [dietSuggestions, setDietSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadEntries() {
       try {
         const response = await nutritionApi.summary();
         const summary = response.data;
+        setAiAdvice(summary.recommendations?.aiAdvice || []);
+        setDietSuggestions(summary.recommendations?.dietSuggestions || []);
         setEntries([
           {
             label: "Protein",
@@ -77,7 +81,6 @@ export default function NutritionPage() {
     }
 
     const payload = {
-      athleteId: "ath-1",
       mealName: form.mealName,
       calories: Number(form.calories),
       protein: Number(form.protein),
@@ -89,6 +92,8 @@ export default function NutritionPage() {
     await nutritionApi.create(payload);
     const summaryResponse = await nutritionApi.summary();
     const summary = summaryResponse.data;
+    setAiAdvice(summary.recommendations?.aiAdvice || []);
+    setDietSuggestions(summary.recommendations?.dietSuggestions || []);
     setEntries([
       {
         label: "Protein",
@@ -177,6 +182,42 @@ export default function NutritionPage() {
                 </div>
               );
             })}
+          </div>
+        </Card>
+      </section>
+
+      <section className="mt-6 grid gap-6 xl:grid-cols-2">
+        <Card>
+          <h3 className="text-xl font-semibold text-app-text">AI nutrition guidance</h3>
+          <div className="mt-5 grid gap-3">
+            {aiAdvice.length === 0 ? (
+              <p className="rounded-2xl bg-app-surface-strong p-4 text-sm text-app-text-soft">
+                Add profile metrics to unlock personalized nutrition guidance.
+              </p>
+            ) : (
+              aiAdvice.map((tip) => (
+                <div key={tip} className="rounded-2xl border border-app-border bg-app-surface-strong p-4 text-sm text-app-text">
+                  {tip}
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+
+        <Card>
+          <h3 className="text-xl font-semibold text-app-text">Suggested diet plan</h3>
+          <div className="mt-5 grid gap-3">
+            {dietSuggestions.length === 0 ? (
+              <p className="rounded-2xl bg-app-surface-strong p-4 text-sm text-app-text-soft">
+                Diet suggestions will appear after profile personalization.
+              </p>
+            ) : (
+              dietSuggestions.map((line) => (
+                <div key={line} className="rounded-2xl bg-app-surface-strong p-4 text-sm text-app-text-soft">
+                  {line}
+                </div>
+              ))
+            )}
           </div>
         </Card>
       </section>

@@ -52,7 +52,6 @@ export default function RunningPage() {
     }
 
     const payload = {
-      athleteId: "ath-1",
       distanceKm: Number(form.distanceKm),
       durationMinutes: Number(form.durationMinutes),
       pace: form.pace,

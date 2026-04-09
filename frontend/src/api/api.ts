@@ -22,6 +22,11 @@ export const authApi = {
     api.post("/auth/register", payload),
 };
 
+export const profileApi = {
+  getMe: () => api.get("/profile/me"),
+  updateMe: (payload: Record<string, unknown>) => api.put("/profile/me", payload),
+};
+
 export const dashboardApi = {
   getAthleteDashboard: () => api.get("/dashboard/athlete"),
   getCoachDashboard: () => api.get("/dashboard/coach"),

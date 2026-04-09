@@ -82,12 +82,17 @@ function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function calculatePerformanceScore({ protein, calories, workoutCount, runningDistanceKm, sleepHours }) {
-  const proteinScore = Math.min((protein / 170) * 100, 100);
-  const calorieScore = Math.min((calories / 2500) * 100, 100);
+function calculatePerformanceScore({ protein, calories, workoutCount, runningDistanceKm, sleepHours, targets = {} }) {
+  const proteinTarget = targets.protein || 170;
+  const calorieTarget = targets.calories || 2500;
+  const runningTarget = targets.runningDistanceKm || 5;
+  const sleepTarget = targets.sleepHours || 8;
+
+  const proteinScore = Math.min((protein / proteinTarget) * 100, 100);
+  const calorieScore = Math.min((calories / calorieTarget) * 100, 100);
   const workoutScore = Math.min(workoutCount * 40, 100);
-  const runningScore = Math.min((runningDistanceKm / 5) * 100, 100);
-  const sleepScore = Math.min((sleepHours / 8) * 100, 100);
+  const runningScore = Math.min((runningDistanceKm / runningTarget) * 100, 100);
+  const sleepScore = Math.min((sleepHours / sleepTarget) * 100, 100);
 
   return clampScore((proteinScore + calorieScore + workoutScore + runningScore + sleepScore) / 5);
 }

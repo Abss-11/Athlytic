@@ -10,6 +10,18 @@ interface AuthUser {
   email: string;
   profile?: {
     sport?: string;
+    age?: number;
+    weight?: number;
+    height?: number;
+    bodyFatPercent?: number;
+    sex?: string;
+    activityLevel?: string;
+    goalType?: string;
+    dietaryPreference?: string;
+    allergies?: string[];
+    recentIllness?: string;
+    recentInjuries?: string;
+    medicalNotes?: string;
     goalsSummary?: string;
   };
 }
@@ -20,6 +32,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (email: string, password: string, role: UserRole) => Promise<void>;
   register: (payload: { name: string; email: string; password: string; role: UserRole; sport?: string }) => Promise<void>;
+  replaceUser: (nextUser: AuthUser) => void;
   logout: () => void;
 }
 
@@ -66,6 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(nextToken);
         window.localStorage.setItem("athlytic-user", JSON.stringify(nextUser));
         window.localStorage.setItem("athlytic-token", nextToken);
+      },
+      replaceUser: (nextUser: AuthUser) => {
+        setUser(nextUser);
+        window.localStorage.setItem("athlytic-user", JSON.stringify(nextUser));
       },
       logout: () => {
         setUser(null);
