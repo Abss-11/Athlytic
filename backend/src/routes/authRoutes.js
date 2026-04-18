@@ -10,10 +10,10 @@ const router = express.Router();
 router.post("/register", async (req, res) => {
   const { name, email, password, role, sport } = req.body;
 
-  const existingUser = isDatabaseConnected()
-    ? await User.findOne({ email, role })
-    : sampleUsers.find((entry) => entry.email === email && entry.role === role);
-  if (existingUser) {
+  const existingDatabaseUser = isDatabaseConnected() ? await User.findOne({ email, role }) : null;
+  const existingFallbackUser = sampleUsers.find((entry) => entry.email === email && entry.role === role);
+
+  if (existingDatabaseUser || existingFallbackUser) {
     return res.status(409).json({ message: "An account already exists for this email and role." });
   }
 
@@ -59,9 +59,15 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { email, password, role } = req.body;
-  const user = isDatabaseConnected()
-    ? await User.findOne({ email, role }).lean()
-    : sampleUsers.find((entry) => entry.email === email && entry.role === role);
+  let user = null;
+
+  if (isDatabaseConnected()) {
+    user = await User.findOne({ email, role }).lean();
+  }
+
+  if (!user) {
+    user = sampleUsers.find((entry) => entry.email === email && entry.role === role);
+  }
 
   if (!user) {
     return res.status(401).json({ message: "Invalid credentials" });

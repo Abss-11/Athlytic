@@ -18,7 +18,9 @@ async function getCurrentUser(req) {
       user = await User.findOne({ email: userEmail });
     }
 
-    return user ? normalizeDocument(user) : null;
+    if (user) {
+      return normalizeDocument(user);
+    }
   }
 
   return (
@@ -42,24 +44,22 @@ async function saveCurrentUser(req, updates) {
       user = await User.findOne({ email: userEmail });
     }
 
-    if (!user) {
-      return null;
-    }
+    if (user) {
+      if (updates.name !== undefined) {
+        user.name = updates.name;
+      }
 
-    if (updates.name !== undefined) {
-      user.name = updates.name;
-    }
+      if (updates.profile) {
+        const currentProfile = user.profile ? user.profile.toObject() : {};
+        user.profile = {
+          ...currentProfile,
+          ...updates.profile,
+        };
+      }
 
-    if (updates.profile) {
-      const currentProfile = user.profile ? user.profile.toObject() : {};
-      user.profile = {
-        ...currentProfile,
-        ...updates.profile,
-      };
+      await user.save();
+      return normalizeDocument(user);
     }
-
-    await user.save();
-    return normalizeDocument(user);
   }
 
   const fallbackUser = sampleUsers.find(
