@@ -1,4 +1,5 @@
 const { isDatabaseConnected } = require("../config/db");
+const mongoose = require("mongoose");
 
 function normalizeDocument(document) {
   if (!document) {
@@ -32,8 +33,52 @@ async function createRecord({ model, fallback, payload, transform }) {
   return entry;
 }
 
+async function updateRecord({ model, fallback, id, payload }) {
+  if (isDatabaseConnected()) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return null;
+    }
+
+    const updated = await model.findByIdAndUpdate(id, payload, { new: true });
+    return normalizeDocument(updated);
+  }
+
+  const index = fallback.findIndex((entry) => String(entry.id) === String(id));
+  if (index === -1) {
+    return null;
+  }
+
+  fallback[index] = {
+    ...fallback[index],
+    ...payload,
+  };
+
+  return fallback[index];
+}
+
+async function deleteRecord({ model, fallback, id }) {
+  if (isDatabaseConnected()) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return null;
+    }
+
+    const deleted = await model.findByIdAndDelete(id);
+    return normalizeDocument(deleted);
+  }
+
+  const index = fallback.findIndex((entry) => String(entry.id) === String(id));
+  if (index === -1) {
+    return null;
+  }
+
+  const [deleted] = fallback.splice(index, 1);
+  return deleted;
+}
+
 module.exports = {
   listRecords,
   createRecord,
+  updateRecord,
+  deleteRecord,
   normalizeDocument,
 };

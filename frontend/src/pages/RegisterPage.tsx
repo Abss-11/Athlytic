@@ -56,7 +56,7 @@ export default function RegisterPage() {
         sport: form.sport,
       });
       pushToast("Account created successfully.", "success");
-      navigate(role === "coach" ? "/coach" : "/dashboard");
+      navigate(role === "coach" ? "/coach" : "/onboarding");
     } catch (submissionError) {
       if (axios.isAxiosError(submissionError)) {
         setError(submissionError.response?.data?.message || "Unable to create your account.");

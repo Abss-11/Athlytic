@@ -13,6 +13,10 @@ const RunningPage = lazy(() => import("./pages/RunningPage"));
 const GoalsPage = lazy(() => import("./pages/GoalsPage"));
 const CommunityPage = lazy(() => import("./pages/CommunityPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
+const ReportsPage = lazy(() => import("./pages/ReportsPage"));
+const IntegrationsPage = lazy(() => import("./pages/IntegrationsPage"));
+const BiomarkersPage = lazy(() => import("./pages/BiomarkersPage"));
 
 export default function App() {
   return (
@@ -30,6 +34,7 @@ export default function App() {
 
         <Route element={<AppShell />}>
           <Route path="/dashboard" element={<AthleteDashboardPage />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/coach" element={<CoachDashboardPage />} />
           <Route path="/nutrition" element={<NutritionPage />} />
           <Route path="/workouts" element={<WorkoutPage />} />
@@ -37,6 +42,9 @@ export default function App() {
           <Route path="/goals" element={<GoalsPage />} />
           <Route path="/community" element={<CommunityPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/integrations" element={<IntegrationsPage />} />
+          <Route path="/biomarkers" element={<BiomarkersPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

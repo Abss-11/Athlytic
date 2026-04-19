@@ -21,6 +21,7 @@
   --accent-strong: 74 204 46;
   --danger: 255 99 132;
   --shadow: 15 23 42 / 0.08;
+  --panel-glow: 26 90 220 / 0.18;
 }
 
 .dark {
@@ -40,6 +41,7 @@
   --accent-strong: 113 233 78;
   --danger: 255 110 140;
   --shadow: 2 6 23 / 0.45;
+  --panel-glow: 102 148 255 / 0.28;
 }
 
 @layer base {
@@ -54,9 +56,39 @@
   body {
     @apply min-h-screen bg-app text-app-text antialiased transition-colors duration-300;
     font-family: "Instrument Sans", sans-serif;
+    background-color: rgb(var(--bg));
     background-image:
-      radial-gradient(circle at top left, rgba(125, 255, 82, 0.14), transparent 25%),
-      radial-gradient(circle at top right, rgba(19, 76, 189, 0.2), transparent 28%);
+      radial-gradient(circle at 12% 8%, rgba(125, 255, 82, 0.14), transparent 24%),
+      radial-gradient(circle at 84% 0%, rgba(19, 76, 189, 0.2), transparent 30%),
+      linear-gradient(165deg, rgba(255, 255, 255, 0.32), transparent 48%);
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background-image:
+      linear-gradient(rgba(var(--border), 0.11) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(var(--border), 0.11) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(circle at center, black 36%, transparent 78%);
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    right: -120px;
+    top: -120px;
+    width: 360px;
+    height: 360px;
+    pointer-events: none;
+    z-index: -1;
+    border-radius: 9999px;
+    background: radial-gradient(circle, rgba(var(--primary), 0.16), rgba(var(--primary), 0) 64%);
+    filter: blur(18px);
+    animation: drift 10s ease-in-out infinite;
   }
 
   h1,
@@ -71,7 +103,29 @@
 
 @layer components {
   .glass-panel {
-    @apply rounded-3xl border border-app-border/70 bg-app-surface/85 shadow-soft backdrop-blur-xl;
+    @apply relative rounded-3xl border border-app-border/75 bg-app-surface/90 shadow-soft backdrop-blur-xl;
+    box-shadow:
+      0 22px 60px rgba(var(--shadow)),
+      0 0 0 1px rgba(var(--panel-glow));
+    transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+  }
+
+  .glass-panel:hover {
+    border-color: rgb(var(--primary) / 0.35);
+    box-shadow:
+      0 26px 66px rgba(var(--shadow)),
+      0 0 0 1px rgba(var(--primary) / 0.28);
+  }
+
+  .panel-hero {
+    @apply relative overflow-hidden rounded-3xl border border-app-border/70 bg-app-surface/90 shadow-soft backdrop-blur-xl;
+    background-image:
+      linear-gradient(135deg, rgba(var(--primary), 0.2), rgba(var(--primary), 0.02)),
+      radial-gradient(circle at 84% 8%, rgba(var(--accent), 0.28), transparent 48%);
+  }
+
+  .metric-chip {
+    @apply inline-flex items-center rounded-full border border-app-border/70 bg-app-surface-soft/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-app-text-soft;
   }
 
   .section-title {
@@ -80,5 +134,17 @@
 
   .section-copy {
     @apply text-sm leading-6 text-app-text-soft md:text-base;
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(-26px, 16px, 0) scale(1.05);
+    opacity: 1;
   }
 }

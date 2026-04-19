@@ -3,9 +3,21 @@ const User = require("../models/User");
 const { isDatabaseConnected } = require("../config/db");
 const { normalizeDocument } = require("./persistence");
 
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function emailMatcher(normalizedEmail) {
+  return new RegExp(`^${escapeRegExp(normalizedEmail)}$`, "i");
+}
+
 async function getCurrentUser(req) {
   const userId = req.user?.sub;
-  const userEmail = req.user?.email;
+  const userEmail = normalizeEmail(req.user?.email);
 
   if (isDatabaseConnected()) {
     let user = null;
@@ -15,23 +27,30 @@ async function getCurrentUser(req) {
     }
 
     if (!user && userEmail) {
-      user = await User.findOne({ email: userEmail });
+      user = await User.findOne({ email: emailMatcher(userEmail) });
     }
 
     if (user) {
+      const normalizedUserEmail = normalizeEmail(user.email);
+      if (normalizedUserEmail && user.email !== normalizedUserEmail) {
+        user.email = normalizedUserEmail;
+        await user.save();
+      }
       return normalizeDocument(user);
     }
   }
 
   return (
-    sampleUsers.find((entry) => (userId && entry.id === userId) || (userEmail && entry.email === userEmail)) ||
+    sampleUsers.find(
+      (entry) => (userId && entry.id === userId) || (userEmail && normalizeEmail(entry.email) === userEmail)
+    ) ||
     null
   );
 }
 
 async function saveCurrentUser(req, updates) {
   const userId = req.user?.sub;
-  const userEmail = req.user?.email;
+  const userEmail = normalizeEmail(req.user?.email);
 
   if (isDatabaseConnected()) {
     let user = null;
@@ -41,7 +60,7 @@ async function saveCurrentUser(req, updates) {
     }
 
     if (!user && userEmail) {
-      user = await User.findOne({ email: userEmail });
+      user = await User.findOne({ email: emailMatcher(userEmail) });
     }
 
     if (user) {

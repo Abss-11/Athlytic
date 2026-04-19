@@ -11,6 +11,10 @@ const sleepRoutes = require("./routes/sleepRoutes");
 const workoutRoutes = require("./routes/workoutRoutes");
 const goalRoutes = require("./routes/goalRoutes");
 const communityRoutes = require("./routes/communityRoutes");
+const reportRoutes = require("./routes/reportRoutes");
+const integrationRoutes = require("./routes/integrationRoutes");
+const coachRoutes = require("./routes/coachRoutes");
+const biomarkerRoutes = require("./routes/biomarkerRoutes");
 
 const app = express();
 const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
@@ -42,6 +46,10 @@ app.use("/api/sleep", sleepRoutes);
 app.use("/api/workouts", workoutRoutes);
 app.use("/api/goals", goalRoutes);
 app.use("/api/community", communityRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/integrations", integrationRoutes);
+app.use("/api/coach", coachRoutes);
+app.use("/api/biomarkers", biomarkerRoutes);
 
 if (!isVercel && hasBuiltFrontend) {
   app.use(express.static(frontendDistPath));

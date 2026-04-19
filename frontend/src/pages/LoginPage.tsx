@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { profileApi } from "../api/api";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
@@ -39,7 +40,18 @@ export default function LoginPage() {
     try {
       await login(email, password, role);
       pushToast("Logged in successfully.", "success");
-      navigate(role === "coach" ? "/coach" : "/dashboard");
+      if (role === "coach") {
+        navigate("/coach");
+        return;
+      }
+
+      try {
+        const profileResponse = await profileApi.getMe();
+        const hasEnoughProfileData = Boolean(profileResponse.data?.macroPlan?.hasEnoughProfileData);
+        navigate(hasEnoughProfileData ? "/dashboard" : "/onboarding");
+      } catch {
+        navigate("/onboarding");
+      }
     } catch (submissionError) {
       if (axios.isAxiosError(submissionError)) {
         setError(submissionError.response?.data?.message || "Unable to log in right now.");

@@ -30,6 +30,16 @@ function getDayWindow(offset = 0, baseDate = new Date()) {
   return { start, end };
 }
 
+function getWeekWindow(weekOffset = 0, baseDate = new Date()) {
+  const start = getStartOfDay(baseDate);
+  const day = start.getDay();
+  start.setDate(start.getDate() - day + weekOffset * 7);
+  
+  const end = getEndOfDay(start);
+  end.setDate(start.getDate() + 6);
+  return { start, end };
+}
+
 function pickRecordDate(record) {
   return toDate(record.loggedAt || record.createdAt || record.updatedAt);
 }
@@ -43,6 +53,10 @@ function filterRecordsForWindow(records, window) {
 
 function filterRecordsForDay(records, offset = 0, baseDate = new Date()) {
   return filterRecordsForWindow(records, getDayWindow(offset, baseDate));
+}
+
+function filterRecordsForWeek(records, weekOffset = 0, baseDate = new Date()) {
+  return filterRecordsForWindow(records, getWeekWindow(weekOffset, baseDate));
 }
 
 function sumNutrition(records) {
@@ -97,6 +111,26 @@ function calculatePerformanceScore({ protein, calories, workoutCount, runningDis
   return clampScore((proteinScore + calorieScore + workoutScore + runningScore + sleepScore) / 5);
 }
 
+function calculateReadinessScore({ recentSleepLogs = [], recentWorkouts = [], sleepTarget = 8, windowDays = 3 }) {
+  const totalSleep = sumSleepHours(recentSleepLogs);
+  const avgSleep = totalSleep / windowDays;
+
+  const intensityMap = { low: 0.5, moderate: 1, high: 1.5 };
+
+  const workoutLoad = recentWorkouts.reduce((acc, w) => {
+    const factor = intensityMap[w.intensity?.toLowerCase()] || 1;
+    const duration = w.durationMinutes || 45;
+    return acc + (duration * factor);
+  }, 0);
+
+  const sleepScore = Math.min((avgSleep / sleepTarget) * 100, 100);
+
+  const rawLoadPenalty = Math.max(0, (workoutLoad - 150) * 0.1);
+  const loadPenalty = rawLoadPenalty * (1 - (sleepScore / 200));
+
+  return clampScore(sleepScore - loadPenalty);
+}
+
 function buildLastNDaySeries(records, numberOfDays, getValue, baseDate = new Date()) {
   const labels = [];
   const values = [];
@@ -123,13 +157,16 @@ function buildYesterdayDeltaText(todayValue, yesterdayValue, unit = "") {
 }
 
 module.exports = {
+  getWeekWindow,
   filterRecordsForDay,
+  filterRecordsForWeek,
   sumNutrition,
   sumRunningDistance,
   sumWorkoutDuration,
   sumWeightLifted,
   sumSleepHours,
   calculatePerformanceScore,
+  calculateReadinessScore,
   buildLastNDaySeries,
   buildYesterdayDeltaText,
   round,

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { dashboardApi, sleepApi } from "../api/api";
 import BarChartCard from "../components/charts/BarChartCard";
@@ -11,7 +12,7 @@ import Input from "../components/ui/Input";
 import ProgressBar from "../components/ui/ProgressBar";
 import ProgressRing from "../components/ui/ProgressRing";
 import { useToast } from "../context/ToastContext";
-import { isPositiveNumber } from "../lib/validation";
+import { extractApiErrorMessage, isPositiveNumber } from "../lib/validation";
 import type { StatCardData } from "../types";
 
 type ChartState = {
@@ -19,13 +20,22 @@ type ChartState = {
   datasets: any[];
 };
 
+type SleepEntry = {
+  id: string;
+  hours: number;
+  note: string;
+  createdAt?: string;
+};
+
 export default function AthleteDashboardPage() {
+  const navigate = useNavigate();
   const { pushToast } = useToast();
   const [stats, setStats] = useState<StatCardData[]>([
     { label: "Protein intake", value: "0g / 170g", delta: "No meals logged yet", tone: "neutral" },
     { label: "Calories", value: "0 kcal", delta: "0% of target", tone: "neutral" },
     { label: "Sleep quality", value: "0 hrs", delta: "No sleep data yet", tone: "neutral" },
     { label: "Performance score", value: "0 / 100", delta: "Start tracking to build your score", tone: "neutral" },
+    { label: "Readiness score", value: "0 / 100", delta: "Start tracking to view recovery", tone: "neutral" },
   ]);
   const [insights, setInsights] = useState<string[]>([]);
   const [goalItems, setGoalItems] = useState<
@@ -40,9 +50,44 @@ export default function AthleteDashboardPage() {
   const [strengthChartData, setStrengthChartData] = useState<ChartState>({ labels: [], datasets: [] });
   const [performanceScore, setPerformanceScore] = useState(0);
   const [sleepHoursInput, setSleepHoursInput] = useState("");
+  const [sleepNoteInput, setSleepNoteInput] = useState("");
+  const [sleepLogs, setSleepLogs] = useState<SleepEntry[]>([]);
+  const [editingSleepId, setEditingSleepId] = useState<string | null>(null);
+  const [deletedSleepEntry, setDeletedSleepEntry] = useState<SleepEntry | null>(null);
   const [sleepDayInfo, setSleepDayInfo] = useState({ today: 0, yesterday: 0, target: 8 });
   const [isSavingSleep, setIsSavingSleep] = useState(false);
+  const [isUndoingSleep, setIsUndoingSleep] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [todayPlan, setTodayPlan] = useState({
+    caloriesLeft: 0,
+    proteinLeft: 0,
+    carbsLeft: 0,
+    fatsLeft: 0,
+    waterLeft: 0,
+    caloriesTarget: 0,
+    proteinTarget: 0,
+    carbsTarget: 0,
+    fatsTarget: 0,
+    waterTarget: 0,
+  });
+
+  function getRemaining(target: number, current: number) {
+    return Math.max(0, Math.round((target - current + Number.EPSILON) * 10) / 10);
+  }
+
+  const loadSleepLogs = useCallback(async () => {
+    const response = await sleepApi.list();
+    const rows = Array.isArray(response.data) ? response.data : [];
+    setSleepLogs(
+      rows.map((entry: SleepEntry) => ({
+        id: entry.id,
+        hours: entry.hours ?? 0,
+        note: entry.note ?? "",
+        createdAt: entry.createdAt,
+      }))
+    );
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -50,17 +95,39 @@ export default function AthleteDashboardPage() {
       const data = response.data;
       const nutritionLogs = Array.isArray(data.nutritionLogs) ? data.nutritionLogs : [];
       const score = typeof data.performanceScore === "number" ? data.performanceScore : 0;
+      const readiness = typeof data.readinessScore === "number" ? data.readinessScore : 0;
       const dailyStats = data.dailyStats || {};
       const charts = data.charts || {};
       const proteinToday = dailyStats.protein?.today || 0;
       const proteinTarget = dailyStats.protein?.target || 170;
       const caloriesToday = dailyStats.calories?.today || 0;
+      const carbsToday = dailyStats.carbs?.today || 0;
+      const fatsToday = dailyStats.fats?.today || 0;
+      const waterToday = dailyStats.water?.today || 0;
       const sleepToday = dailyStats.sleep?.today || 0;
       const sleepYesterday = dailyStats.sleep?.yesterday || 0;
       const sleepTarget = dailyStats.sleep?.target || 8;
+      const caloriesTarget = dailyStats.calories?.target || 2500;
+      const carbsTarget = dailyStats.carbs?.target || 250;
+      const fatsTarget = dailyStats.fats?.target || 75;
+      const waterTarget = dailyStats.water?.target || 3.5;
+      const hasEnoughProfileData = Boolean(data.macroPlan?.hasEnoughProfileData);
 
       setPerformanceScore(score);
       setSleepDayInfo({ today: sleepToday, yesterday: sleepYesterday, target: sleepTarget });
+      setNeedsOnboarding(!hasEnoughProfileData);
+      setTodayPlan({
+        caloriesLeft: getRemaining(caloriesTarget, caloriesToday),
+        proteinLeft: getRemaining(proteinTarget, proteinToday),
+        carbsLeft: getRemaining(carbsTarget, carbsToday),
+        fatsLeft: getRemaining(fatsTarget, fatsToday),
+        waterLeft: getRemaining(waterTarget, waterToday),
+        caloriesTarget,
+        proteinTarget,
+        carbsTarget,
+        fatsTarget,
+        waterTarget,
+      });
       setStats([
         {
           label: "Protein intake",
@@ -85,6 +152,12 @@ export default function AthleteDashboardPage() {
           value: `${score} / 100`,
           delta: data.deltas?.performanceScore || "No change vs yesterday",
           tone: score > 0 ? "positive" : "neutral",
+        },
+        {
+          label: "Readiness score",
+          value: `${readiness} / 100`,
+          delta: readiness > 0 ? (readiness >= 80 ? "Sufficiently recovered" : readiness < 70 ? "Consider resting" : "Tracking load") : "No data",
+          tone: readiness > 0 ? (readiness >= 80 ? "positive" : "neutral") : "neutral",
         },
       ]);
 
@@ -136,8 +209,12 @@ export default function AthleteDashboardPage() {
   }, []);
 
   useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+    async function loadAll() {
+      await Promise.all([loadDashboard(), loadSleepLogs()]);
+    }
+
+    void loadAll();
+  }, [loadDashboard, loadSleepLogs]);
 
   async function handleSleepSave() {
     if (!isPositiveNumber(sleepHoursInput)) {
@@ -153,20 +230,73 @@ export default function AthleteDashboardPage() {
 
     setIsSavingSleep(true);
     try {
-      await sleepApi.create({
-        hours: sleepHours,
-      });
-      pushToast("Sleep entry saved for today.", "success");
-      setSleepHoursInput("");
-      await loadDashboard();
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        pushToast(error.response?.data?.message || "Could not save sleep entry right now.", "error");
+      if (editingSleepId) {
+        await sleepApi.update(editingSleepId, {
+          hours: sleepHours,
+          note: sleepNoteInput.trim(),
+        });
+        pushToast("Sleep entry updated.", "success");
       } else {
-        pushToast("Could not save sleep entry right now.", "error");
+        await sleepApi.create({
+          hours: sleepHours,
+          note: sleepNoteInput.trim(),
+        });
+        pushToast("Sleep entry saved for today.", "success");
       }
+
+      setSleepHoursInput("");
+      setSleepNoteInput("");
+      setEditingSleepId(null);
+      await Promise.all([loadDashboard(), loadSleepLogs()]);
+    } catch (error) {
+      pushToast(extractApiErrorMessage(error, "Could not save sleep entry right now."), "error");
     } finally {
       setIsSavingSleep(false);
+    }
+  }
+
+  function handleEditSleep(entry: SleepEntry) {
+    setEditingSleepId(entry.id);
+    setSleepHoursInput(String(entry.hours));
+    setSleepNoteInput(entry.note || "");
+  }
+
+  function handleCancelSleepEdit() {
+    setEditingSleepId(null);
+    setSleepHoursInput("");
+    setSleepNoteInput("");
+  }
+
+  async function handleDeleteSleep(entry: SleepEntry) {
+    try {
+      await sleepApi.remove(entry.id);
+      setDeletedSleepEntry(entry);
+      pushToast("Sleep entry deleted. You can undo this.", "info");
+      if (editingSleepId === entry.id) {
+        handleCancelSleepEdit();
+      }
+      await Promise.all([loadDashboard(), loadSleepLogs()]);
+    } catch (error) {
+      pushToast(extractApiErrorMessage(error, "Could not delete sleep entry."), "error");
+    }
+  }
+
+  async function handleUndoSleepDelete() {
+    if (!deletedSleepEntry) return;
+
+    setIsUndoingSleep(true);
+    try {
+      await sleepApi.create({
+        hours: deletedSleepEntry.hours,
+        note: deletedSleepEntry.note,
+      });
+      setDeletedSleepEntry(null);
+      pushToast("Sleep entry restored.", "success");
+      await Promise.all([loadDashboard(), loadSleepLogs()]);
+    } catch (error) {
+      pushToast(extractApiErrorMessage(error, "Could not restore sleep entry."), "error");
+    } finally {
+      setIsUndoingSleep(false);
     }
   }
 
@@ -179,7 +309,40 @@ export default function AthleteDashboardPage() {
         badge={`Performance score ${performanceScore}`}
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {needsOnboarding ? (
+        <Card className="mb-6 border-app-accent/40">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.22em] text-app-text-soft">Onboarding needed</p>
+              <h3 className="mt-2 text-xl font-semibold text-app-text">
+                Complete onboarding to unlock fully personalized daily targets.
+              </h3>
+              <p className="mt-2 text-sm text-app-text-soft">
+                Add age, weight, height, activity level, and goal to power accurate macros and recovery planning.
+              </p>
+            </div>
+            <Button type="button" onClick={() => navigate("/onboarding")}>
+              Start onboarding
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+
+      {deletedSleepEntry ? (
+        <Card className="mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-app-text-soft">
+              Deleted sleep entry:{" "}
+              <span className="font-semibold text-app-text">{deletedSleepEntry.hours}h</span>
+            </p>
+            <Button type="button" variant="secondary" disabled={isUndoingSleep} onClick={handleUndoSleepDelete}>
+              {isUndoingSleep ? "Restoring..." : "Undo delete"}
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {stats.map((stat) => (
           <StatCard key={stat.label} {...stat} />
         ))}
@@ -217,6 +380,50 @@ export default function AthleteDashboardPage() {
 
         <div className="grid gap-6">
           <Card>
+            <h3 className="text-lg font-semibold text-app-text">Today plan</h3>
+            <p className="mt-2 text-sm text-app-text-soft">
+              Live remaining targets for today based on your personalized macro profile.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-app-surface-strong p-4">
+                <p className="text-sm text-app-text-soft">Calories left</p>
+                <p className="mt-2 text-xl font-semibold text-app-text">
+                  {todayPlan.caloriesLeft} kcal
+                </p>
+                <p className="text-xs text-app-text-soft">Target {todayPlan.caloriesTarget} kcal</p>
+              </div>
+              <div className="rounded-2xl bg-app-surface-strong p-4">
+                <p className="text-sm text-app-text-soft">Protein left</p>
+                <p className="mt-2 text-xl font-semibold text-app-text">
+                  {todayPlan.proteinLeft} g
+                </p>
+                <p className="text-xs text-app-text-soft">Target {todayPlan.proteinTarget} g</p>
+              </div>
+              <div className="rounded-2xl bg-app-surface-strong p-4">
+                <p className="text-sm text-app-text-soft">Carbs left</p>
+                <p className="mt-2 text-xl font-semibold text-app-text">
+                  {todayPlan.carbsLeft} g
+                </p>
+                <p className="text-xs text-app-text-soft">Target {todayPlan.carbsTarget} g</p>
+              </div>
+              <div className="rounded-2xl bg-app-surface-strong p-4">
+                <p className="text-sm text-app-text-soft">Fats left</p>
+                <p className="mt-2 text-xl font-semibold text-app-text">
+                  {todayPlan.fatsLeft} g
+                </p>
+                <p className="text-xs text-app-text-soft">Target {todayPlan.fatsTarget} g</p>
+              </div>
+              <div className="rounded-2xl bg-app-surface-strong p-4 sm:col-span-2">
+                <p className="text-sm text-app-text-soft">Water left</p>
+                <p className="mt-2 text-xl font-semibold text-app-text">
+                  {todayPlan.waterLeft} L
+                </p>
+                <p className="text-xs text-app-text-soft">Target {todayPlan.waterTarget} L</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card>
             <ProgressRing value={goalItems.length === 0 ? 0 : Math.round(goalItems.reduce((sum, goal) => sum + goal.progress, 0) / goalItems.length)} label="Goal completion rings" />
             <div className="mt-6 grid gap-4">
               {goalItems.length === 0 ? (
@@ -247,7 +454,14 @@ export default function AthleteDashboardPage() {
             <p className="mt-2 text-sm text-app-text-soft">
               Log sleep for today. Daily metrics reset every day and compare against yesterday.
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <div className="mt-4 grid gap-3">
+              <Input
+                placeholder="Optional note (sleep quality, wake-ups, recovery)"
+                value={sleepNoteInput}
+                onChange={(event) => setSleepNoteInput(event.target.value)}
+              />
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
               <Input
                 type="number"
                 min="0"
@@ -258,12 +472,43 @@ export default function AthleteDashboardPage() {
                 onChange={(event) => setSleepHoursInput(event.target.value)}
               />
               <Button type="button" onClick={handleSleepSave} disabled={isSavingSleep}>
-                {isSavingSleep ? "Saving..." : "Save sleep"}
+                {isSavingSleep ? "Saving..." : editingSleepId ? "Update sleep" : "Save sleep"}
               </Button>
             </div>
+            {editingSleepId ? (
+              <Button type="button" variant="ghost" className="mt-3 w-full" onClick={handleCancelSleepEdit}>
+                Cancel sleep edit
+              </Button>
+            ) : null}
             <p className="mt-3 text-sm text-app-text-soft">
               Today: {sleepDayInfo.today}h / {sleepDayInfo.target}h target, Yesterday: {sleepDayInfo.yesterday}h
             </p>
+            <div className="mt-4 grid gap-3">
+              {sleepLogs.length === 0 ? (
+                <div className="rounded-2xl bg-app-surface-strong p-4 text-sm text-app-text-soft">
+                  No sleep logs yet. Add your first sleep entry above.
+                </div>
+              ) : (
+                sleepLogs.slice(0, 6).map((entry) => (
+                  <div key={entry.id} className="rounded-2xl bg-app-surface-strong p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-app-text">{entry.hours} hrs</p>
+                        <p className="text-xs text-app-text-soft">{entry.note || "No note"}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="ghost" onClick={() => handleEditSleep(entry)}>
+                          Edit
+                        </Button>
+                        <Button type="button" variant="secondary" onClick={() => handleDeleteSleep(entry)}>
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </Card>
 
           <Card>
