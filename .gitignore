@@ -5,3 +5,5 @@ backend/node_modules/
 frontend/dist/
 backend/.env
 npm-debug.log*
+.vercel
+.env*.local
