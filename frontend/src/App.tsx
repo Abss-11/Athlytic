@@ -1,5 +1,6 @@
 import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import AppShell from "./components/layout/AppShell";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -20,35 +21,38 @@ const BiomarkersPage = lazy(() => import("./pages/BiomarkersPage"));
 
 export default function App() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-app text-sm font-medium text-app-text-soft">
-          Loading Athlytic...
-        </div>
-      }
-    >
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<RegisterPage />} />
+    <>
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center bg-app text-sm font-medium text-app-text-soft">
+            Loading Athlytic...
+          </div>
+        }
+      >
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<RegisterPage />} />
 
-        <Route element={<AppShell />}>
-          <Route path="/dashboard" element={<AthleteDashboardPage />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path="/coach" element={<CoachDashboardPage />} />
-          <Route path="/nutrition" element={<NutritionPage />} />
-          <Route path="/workouts" element={<WorkoutPage />} />
-          <Route path="/running" element={<RunningPage />} />
-          <Route path="/goals" element={<GoalsPage />} />
-          <Route path="/community" element={<CommunityPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/integrations" element={<IntegrationsPage />} />
-          <Route path="/biomarkers" element={<BiomarkersPage />} />
-        </Route>
+          <Route element={<AppShell />}>
+            <Route path="/dashboard" element={<AthleteDashboardPage />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
+            <Route path="/coach" element={<CoachDashboardPage />} />
+            <Route path="/nutrition" element={<NutritionPage />} />
+            <Route path="/workouts" element={<WorkoutPage />} />
+            <Route path="/running" element={<RunningPage />} />
+            <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/community" element={<CommunityPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/biomarkers" element={<BiomarkersPage />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+      <Analytics />
+    </>
   );
 }
