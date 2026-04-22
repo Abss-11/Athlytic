@@ -29,6 +29,13 @@ const scoreLabelMap = {
   running: "Running volume",
   sleep: "Sleep consistency",
 };
+const focusTipByMetric = {
+  protein: "Increase protein in the first two meals to stabilize daily intake.",
+  calories: "Pre-plan one calorie-dense recovery meal post-workout to hit target consistently.",
+  workouts: "Block training sessions on calendar in advance to improve completion rate.",
+  running: "Add one short quality run and one easy volume run this week.",
+  sleep: "Set a fixed sleep window and reduce screen exposure 45 minutes before bed.",
+};
 
 function filterByAthlete(records, athleteId) {
   if (!athleteId) {
@@ -160,6 +167,19 @@ function summarizeTrend(metrics) {
   return `Improved in ${improved.join(", ")}; focus on ${declined.join(", ")}.`;
 }
 
+function getScoreBand(score) {
+  if (score >= 85) {
+    return "Elite";
+  }
+  if (score >= 70) {
+    return "Strong";
+  }
+  if (score >= 50) {
+    return "Developing";
+  }
+  return "Foundation";
+}
+
 function buildWeekSnapshot(offset, scopedNutritionLogs, scopedRunningSessions, scopedSleepLogs, scopedWorkouts, targets) {
   const weekData = filterRecordsForWeek(scopedNutritionLogs, offset);
   const runningData = filterRecordsForWeek(scopedRunningSessions, offset);
@@ -214,6 +234,8 @@ function buildWeekSnapshot(offset, scopedNutritionLogs, scopedRunningSessions, s
     performanceBreakdown: performanceDetails.breakdown,
     strongestArea: performanceDetails.strongestArea,
     limitingArea: performanceDetails.limitingArea,
+    scoreBand: getScoreBand(performanceDetails.score),
+    focusTip: focusTipByMetric[performanceDetails.limitingArea.key] || "Maintain a consistent daily routine this week.",
   };
 }
 
@@ -319,59 +341,205 @@ async function buildWeeklyReportPayload(req) {
   };
 }
 
-function writeMetricLines(doc, metrics) {
-  metrics.forEach((metric) => {
-    const percentText = metric.percentChange === null ? "n/a" : `${formatSigned(metric.percentChange)}%`;
-    doc.text(
-      `${metric.label}: ${metric.current}${metric.unit} (prev ${metric.previous}${metric.unit}, ${formatSigned(
-        metric.delta
-      )}${metric.unit}, ${percentText})`
-    );
+function formatMetricValue(metric, key = "current") {
+  return `${metric[key]}${metric.unit || ""}`;
+}
+
+function formatPercentChange(metric) {
+  if (metric.percentChange === null) {
+    return "new";
+  }
+  return `${formatSigned(metric.percentChange)}%`;
+}
+
+function ensurePageSpace(doc, y, requiredHeight, topMargin = 44, bottomMargin = 44) {
+  const available = doc.page.height - bottomMargin;
+  if (y + requiredHeight <= available) {
+    return y;
+  }
+
+  doc.addPage();
+  return topMargin;
+}
+
+function drawHeaderCard(doc, x, y, width, payload, currentWeek) {
+  const generatedDate = new Date(payload.trends.generatedAt).toLocaleString("en-US");
+  const score = currentWeek.performanceScore;
+
+  doc.save();
+  doc.roundedRect(x, y, width, 104, 14).fill("#0f172a");
+  doc.roundedRect(x + 1, y + 1, width - 2, 102, 14).strokeColor("#1e3a8a").lineWidth(1).stroke();
+  doc.restore();
+
+  doc.fillColor("#93c5fd").fontSize(10).text("ATHLYTIC WEEKLY PERFORMANCE REPORT", x + 20, y + 16);
+  doc.fillColor("#f8fafc").fontSize(20).text(payload.athleteName, x + 20, y + 30, { width: width - 190 });
+  doc.fillColor("#cbd5e1").fontSize(10).text(`Generated: ${generatedDate}`, x + 20, y + 58);
+  doc.text(`Window: ${currentWeek.dateRange}`, x + 20, y + 72);
+
+  const scoreCardWidth = 120;
+  const scoreCardX = x + width - scoreCardWidth - 18;
+  doc.roundedRect(scoreCardX, y + 18, scoreCardWidth, 68, 12).fill("#111827");
+  doc.strokeColor("#334155").lineWidth(1).roundedRect(scoreCardX, y + 18, scoreCardWidth, 68, 12).stroke();
+
+  doc.fillColor("#94a3b8").fontSize(9).text("PERFORMANCE SCORE", scoreCardX + 10, y + 28, {
+    width: scoreCardWidth - 20,
+    align: "center",
+  });
+  doc.fillColor("#a3e635").fontSize(24).text(`${score}`, scoreCardX + 10, y + 42, {
+    width: scoreCardWidth - 20,
+    align: "center",
   });
 }
 
-function createPdf({ doc, athleteName, currentWeek, previousWeek, trends }) {
-  const generatedDate = new Date(trends.generatedAt).toLocaleString("en-US");
+function drawSummaryCard(doc, x, y, width, currentWeek, previousWeek) {
+  doc.roundedRect(x, y, width, 82, 12).fill("#f8fafc");
+  doc.strokeColor("#e2e8f0").lineWidth(1).roundedRect(x, y, width, 82, 12).stroke();
 
-  doc.fontSize(22).text("Athlytic Weekly Performance Report");
-  doc.moveDown(0.3);
-  doc.fontSize(11).fillColor("#4b5563").text(`Athlete: ${athleteName}`);
-  doc.text(`Generated: ${generatedDate}`);
-  doc.text(`Report Window: ${currentWeek.dateRange}`);
+  doc.fillColor("#0f172a").fontSize(14).text(`Score Band: ${currentWeek.scoreBand}`, x + 16, y + 14);
+  doc.fillColor("#334155").fontSize(10).text(currentWeek.performanceExplanation, x + 16, y + 34, { width: width - 32 });
+  doc.fillColor("#1d4ed8").fontSize(10).text(`Focus: ${currentWeek.focusTip}`, x + 16, y + 60, { width: width - 32 });
 
-  doc.moveDown(1.1);
-  doc.fillColor("#111827").fontSize(16).text(`Performance Score: ${currentWeek.performanceScore}/100`);
-  doc.moveDown(0.2);
-  doc.fontSize(11).fillColor("#374151").text(currentWeek.performanceExplanation);
-
-  doc.moveDown(0.8);
-  doc.fillColor("#111827").fontSize(14).text("Today vs Yesterday");
-  doc.moveDown(0.2);
-  writeMetricLines(doc, trends.todayVsYesterday.metrics);
-  doc.text(
-    `Score: ${trends.todayVsYesterday.performanceScore.current} (delta ${formatSigned(
-      trends.todayVsYesterday.performanceScore.delta
-    )})`
+  const delta = currentWeek.performanceScore - previousWeek.performanceScore;
+  doc.fillColor("#334155").fontSize(10).text(
+    `Week-over-week score: ${formatSigned(delta)} (${currentWeek.performanceScore} vs ${previousWeek.performanceScore})`,
+    x + width - 220,
+    y + 14,
+    { width: 200, align: "right" }
   );
-  doc.text(`Summary: ${trends.todayVsYesterday.summary}`);
+}
 
-  doc.moveDown(0.8);
-  doc.fontSize(14).fillColor("#111827").text("Week vs Week");
-  doc.moveDown(0.2);
-  doc.fontSize(11).fillColor("#374151").text(`${currentWeek.title} vs ${previousWeek.title}`);
-  writeMetricLines(doc, trends.weekVsWeek.metrics);
-  doc.text(`Score: ${currentWeek.performanceScore} vs ${previousWeek.performanceScore}`);
-  doc.text(`Summary: ${trends.weekVsWeek.summary}`);
+function drawTrendTable(doc, x, y, width, title, subtitle, trendBlock) {
+  const rowHeight = 24;
+  const tableRows = trendBlock.metrics.length + 1;
+  const cardHeight = 62 + tableRows * rowHeight + 30;
 
-  doc.moveDown(0.8);
-  doc.fontSize(14).fillColor("#111827").text("Current Week Core Totals");
-  doc.moveDown(0.2);
-  doc.fontSize(11).fillColor("#374151").text(`Workouts: ${currentWeek.totalWorkouts}`);
-  doc.text(`Workout duration: ${currentWeek.totalWorkoutDuration} mins`);
-  doc.text(`Running distance: ${currentWeek.totalRunningDistance} km`);
-  doc.text(`Avg protein: ${currentWeek.avgProtein} g/day`);
-  doc.text(`Avg calories: ${currentWeek.avgCalories} kcal/day`);
-  doc.text(`Avg sleep: ${currentWeek.avgSleep} h/day`);
+  doc.roundedRect(x, y, width, cardHeight, 12).fill("#ffffff");
+  doc.strokeColor("#e2e8f0").lineWidth(1).roundedRect(x, y, width, cardHeight, 12).stroke();
+
+  doc.fillColor("#0f172a").fontSize(13).text(title, x + 16, y + 14);
+  doc.fillColor("#64748b").fontSize(9).text(subtitle, x + 16, y + 31, { width: width - 32 });
+  doc.fillColor("#334155").fontSize(9).text(`Summary: ${trendBlock.summary}`, x + 16, y + 44, { width: width - 32 });
+
+  const tableY = y + 62;
+  const colMetric = x + 16;
+  const colCurrent = x + width * 0.44;
+  const colPrev = x + width * 0.63;
+  const colDelta = x + width * 0.78;
+
+  doc.rect(x + 12, tableY, width - 24, rowHeight).fill("#f1f5f9");
+  doc.fillColor("#334155").fontSize(8).text("Metric", colMetric, tableY + 8);
+  doc.text("Current", colCurrent, tableY + 8);
+  doc.text("Previous", colPrev, tableY + 8);
+  doc.text("Delta", colDelta, tableY + 8);
+
+  trendBlock.metrics.forEach((metric, index) => {
+    const rowY = tableY + rowHeight * (index + 1);
+    if (index % 2 === 0) {
+      doc.rect(x + 12, rowY, width - 24, rowHeight).fill("#f8fafc");
+    }
+    doc.fillColor("#0f172a").fontSize(9).text(metric.label, colMetric, rowY + 7);
+    doc.fillColor("#334155").text(formatMetricValue(metric), colCurrent, rowY + 7);
+    doc.text(formatMetricValue(metric, "previous"), colPrev, rowY + 7);
+    doc.text(`${formatSigned(metric.delta)}${metric.unit} (${formatPercentChange(metric)})`, colDelta, rowY + 7, {
+      width: width - (colDelta - x) - 18,
+    });
+  });
+
+  return cardHeight;
+}
+
+function drawBreakdownCard(doc, x, y, width, breakdown) {
+  const rowHeight = 30;
+  const cardHeight = 48 + breakdown.length * rowHeight + 20;
+  doc.roundedRect(x, y, width, cardHeight, 12).fill("#ffffff");
+  doc.strokeColor("#e2e8f0").lineWidth(1).roundedRect(x, y, width, cardHeight, 12).stroke();
+  doc.fillColor("#0f172a").fontSize(13).text("Performance Breakdown", x + 16, y + 14);
+
+  breakdown.forEach((item, index) => {
+    const rowY = y + 44 + index * rowHeight;
+    doc.fillColor("#334155").fontSize(9).text(item.label, x + 16, rowY + 3);
+    doc.fillColor("#0f172a").fontSize(9).text(`${item.score}/100`, x + width - 60, rowY + 3, { width: 44, align: "right" });
+
+    const barX = x + 16;
+    const barY = rowY + 16;
+    const barWidth = width - 90;
+    doc.roundedRect(barX, barY, barWidth, 8, 4).fill("#e2e8f0");
+    doc.roundedRect(barX, barY, (barWidth * Math.max(0, Math.min(100, item.score))) / 100, 8, 4).fill("#3b82f6");
+  });
+
+  return cardHeight;
+}
+
+function drawCoreTotalsCard(doc, x, y, width, currentWeek) {
+  const cardHeight = 152;
+  doc.roundedRect(x, y, width, cardHeight, 12).fill("#ffffff");
+  doc.strokeColor("#e2e8f0").lineWidth(1).roundedRect(x, y, width, cardHeight, 12).stroke();
+  doc.fillColor("#0f172a").fontSize(13).text("Current Week Core Totals", x + 16, y + 14);
+
+  const metrics = [
+    ["Workouts", `${currentWeek.totalWorkouts}`],
+    ["Workout Duration", `${currentWeek.totalWorkoutDuration} mins`],
+    ["Running Distance", `${currentWeek.totalRunningDistance} km`],
+    ["Avg Protein", `${currentWeek.avgProtein} g/day`],
+    ["Avg Calories", `${currentWeek.avgCalories} kcal/day`],
+    ["Avg Sleep", `${currentWeek.avgSleep} h/day`],
+  ];
+
+  metrics.forEach(([label, value], index) => {
+    const row = Math.floor(index / 2);
+    const col = index % 2;
+    const cellX = x + 16 + col * ((width - 40) / 2);
+    const cellY = y + 42 + row * 34;
+    doc.fillColor("#64748b").fontSize(8).text(label, cellX, cellY);
+    doc.fillColor("#0f172a").fontSize(10).text(value, cellX, cellY + 11, { width: (width - 52) / 2 });
+  });
+
+  return cardHeight;
+}
+
+function createPdf({ doc, athleteName, currentWeek, previousWeek, trends }) {
+  const pageWidth = doc.page.width - 88;
+  const startX = 44;
+  let y = 44;
+
+  drawHeaderCard(doc, startX, y, pageWidth, { athleteName, trends }, currentWeek);
+  y += 118;
+
+  drawSummaryCard(doc, startX, y, pageWidth, currentWeek, previousWeek);
+  y += 96;
+
+  y = ensurePageSpace(doc, y, 220);
+  const todayHeight = drawTrendTable(
+    doc,
+    startX,
+    y,
+    pageWidth,
+    "Today vs Yesterday",
+    "Daily movement snapshot",
+    trends.todayVsYesterday
+  );
+  y += todayHeight + 14;
+
+  y = ensurePageSpace(doc, y, 220);
+  const weekHeight = drawTrendTable(
+    doc,
+    startX,
+    y,
+    pageWidth,
+    "Week vs Week",
+    `${currentWeek.title} against ${previousWeek.title}`,
+    trends.weekVsWeek
+  );
+  y += weekHeight + 14;
+
+  y = ensurePageSpace(doc, y, 200);
+  const breakdownHeight = drawBreakdownCard(doc, startX, y, pageWidth, currentWeek.performanceBreakdown);
+  y += breakdownHeight + 14;
+
+  y = ensurePageSpace(doc, y, 170);
+  drawCoreTotalsCard(doc, startX, y, pageWidth, currentWeek);
+
+  doc.fillColor("#94a3b8").fontSize(8).text("Generated by Athlytic Performance OS", startX, doc.page.height - 28);
 }
 
 router.get("/weekly", protect, async (req, res) => {
