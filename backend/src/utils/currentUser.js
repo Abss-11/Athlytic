@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const { sampleUsers } = require("../data/sampleData");
 const User = require("../models/User");
 const { isDatabaseConnected } = require("../config/db");
@@ -22,7 +23,7 @@ async function getCurrentUser(req) {
   if (isDatabaseConnected()) {
     let user = null;
 
-    if (userId) {
+    if (userId && mongoose.isValidObjectId(userId)) {
       user = await User.findById(userId);
     }
 
@@ -55,7 +56,7 @@ async function saveCurrentUser(req, updates) {
   if (isDatabaseConnected()) {
     let user = null;
 
-    if (userId) {
+    if (userId && mongoose.isValidObjectId(userId)) {
       user = await User.findById(userId);
     }
 
@@ -82,7 +83,7 @@ async function saveCurrentUser(req, updates) {
   }
 
   const fallbackUser = sampleUsers.find(
-    (entry) => (userId && entry.id === userId) || (userEmail && entry.email === userEmail)
+    (entry) => (userId && entry.id === userId) || (userEmail && normalizeEmail(entry.email) === userEmail)
   );
 
   if (!fallbackUser) {

@@ -76,6 +76,7 @@ export const communityApi = {
 
 export const reportsApi = {
   getWeeklyReports: () => api.get("/reports/weekly"),
+  downloadWeeklyPdf: () => api.get("/reports/weekly/pdf", { responseType: "blob" }),
 };
 
 export const integrationApi = {
