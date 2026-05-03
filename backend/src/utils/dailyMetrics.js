@@ -80,8 +80,41 @@ function sumWorkoutDuration(records) {
   return records.reduce((duration, record) => duration + (record.durationMinutes || 0), 0);
 }
 
+function getWorkoutVolume(record) {
+  if (!record || typeof record !== "object") {
+    return 0;
+  }
+
+  if (typeof record.totalLoadKg === "number" && Number.isFinite(record.totalLoadKg) && record.totalLoadKg >= 0) {
+    return record.totalLoadKg;
+  }
+
+  if (Array.isArray(record.exercises) && record.exercises.length > 0) {
+    return record.exercises.reduce((accumulator, exercise) => {
+      const sets = Number(exercise?.sets) || 0;
+      const reps = Number(exercise?.reps) || 0;
+      const weight = Number(exercise?.weightLifted) || 0;
+      return accumulator + sets * reps * weight;
+    }, 0);
+  }
+
+  const sets = Number(record.sets) || 0;
+  const reps = Number(record.reps) || 0;
+  const weight = Number(record.weightLifted) || 0;
+
+  if (sets > 0 && reps > 0 && weight > 0) {
+    return sets * reps * weight;
+  }
+
+  return weight;
+}
+
+function sumWorkoutVolume(records) {
+  return records.reduce((volume, record) => volume + getWorkoutVolume(record), 0);
+}
+
 function sumWeightLifted(records) {
-  return records.reduce((weight, record) => weight + (record.weightLifted || 0), 0);
+  return sumWorkoutVolume(records);
 }
 
 function sumSleepHours(records) {
@@ -163,6 +196,7 @@ module.exports = {
   sumNutrition,
   sumRunningDistance,
   sumWorkoutDuration,
+  sumWorkoutVolume,
   sumWeightLifted,
   sumSleepHours,
   calculatePerformanceScore,

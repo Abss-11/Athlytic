@@ -43,6 +43,7 @@ export const nutritionApi = {
 
 export const workoutApi = {
   list: () => api.get("/workouts"),
+  summary: () => api.get("/workouts/summary"),
   create: (payload: Record<string, unknown>) => api.post("/workouts", payload),
   update: (id: string, payload: Record<string, unknown>) => api.put(`/workouts/${id}`, payload),
   remove: (id: string) => api.delete(`/workouts/${id}`),

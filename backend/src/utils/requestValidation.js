@@ -181,8 +181,11 @@ function validateNutritionInput(raw = {}, { partial = false } = {}) {
 function validateWorkoutInput(raw = {}, { partial = false } = {}) {
   const errors = [];
   const data = {};
+  const allowedIntensity = ["Low", "Medium", "High", "Max"];
   const focus = parseText(raw.focus);
   const hasFocus = raw.focus !== undefined;
+  const hasExercises = raw.exercises !== undefined;
+  const shouldRequireLegacyCoreFields = !partial && !hasExercises;
 
   if (!partial || hasFocus) {
     if (!focus) {
@@ -200,7 +203,7 @@ function validateWorkoutInput(raw = {}, { partial = false } = {}) {
     min: 1,
     max: 100,
     integer: true,
-    required: !partial,
+    required: shouldRequireLegacyCoreFields,
     errors,
     target: data,
   });
@@ -210,7 +213,7 @@ function validateWorkoutInput(raw = {}, { partial = false } = {}) {
     min: 1,
     max: 300,
     integer: true,
-    required: !partial,
+    required: shouldRequireLegacyCoreFields,
     errors,
     target: data,
   });
@@ -233,22 +236,126 @@ function validateWorkoutInput(raw = {}, { partial = false } = {}) {
     target: data,
   });
 
+  if (hasExercises) {
+    if (!Array.isArray(raw.exercises)) {
+      addError(errors, "exercises", "exercises must be an array.");
+    } else if (raw.exercises.length === 0) {
+      addError(errors, "exercises", "Add at least one exercise.");
+    } else if (raw.exercises.length > 30) {
+      addError(errors, "exercises", "A session can have at most 30 exercises.");
+    } else {
+      const exercises = [];
+
+      raw.exercises.forEach((exercise, index) => {
+        const fieldPrefix = `exercises[${index}]`;
+        if (!exercise || typeof exercise !== "object") {
+          addError(errors, fieldPrefix, `${fieldPrefix} must be a valid object.`);
+          return;
+        }
+
+        const name = parseText(exercise.name);
+        const bodyRegion = parseText(exercise.bodyRegion || "");
+        const sets = parseInteger(exercise.sets);
+        const reps = parseInteger(exercise.reps);
+        const weightLifted = parseNumber(exercise.weightLifted);
+        const restSecondsRaw = exercise.restSeconds;
+        const restSeconds = restSecondsRaw === undefined || restSecondsRaw === null || restSecondsRaw === "" ? null : parseInteger(restSecondsRaw);
+
+        if (!name) {
+          addError(errors, `${fieldPrefix}.name`, "Exercise name is required.");
+        } else if (name.length > 80) {
+          addError(errors, `${fieldPrefix}.name`, "Exercise name must be 80 characters or fewer.");
+        }
+
+        if (bodyRegion && bodyRegion.length > 100) {
+          addError(errors, `${fieldPrefix}.bodyRegion`, "bodyRegion must be 100 characters or fewer.");
+        }
+
+        if (sets === null || sets < 1 || sets > 100) {
+          addError(errors, `${fieldPrefix}.sets`, "sets must be an integer between 1 and 100.");
+        }
+
+        if (reps === null || reps < 1 || reps > 300) {
+          addError(errors, `${fieldPrefix}.reps`, "reps must be an integer between 1 and 300.");
+        }
+
+        if (weightLifted === null || weightLifted < 0 || weightLifted > 2000) {
+          addError(errors, `${fieldPrefix}.weightLifted`, "weightLifted must be a number between 0 and 2000.");
+        }
+
+        if (restSeconds !== null && (restSeconds < 0 || restSeconds > 1800)) {
+          addError(errors, `${fieldPrefix}.restSeconds`, "restSeconds must be between 0 and 1800.");
+        }
+
+        if (errors.length > 0) {
+          return;
+        }
+
+        exercises.push({
+          name,
+          bodyRegion: bodyRegion || "Other",
+          sets,
+          reps,
+          weightLifted,
+          ...(restSeconds !== null ? { restSeconds } : {}),
+        });
+      });
+
+      if (exercises.length > 0) {
+        const totalSets = exercises.reduce((sum, entry) => sum + entry.sets, 0);
+        const totalReps = exercises.reduce((sum, entry) => sum + entry.reps, 0);
+        const heaviestLift = exercises.reduce((maxValue, entry) => Math.max(maxValue, entry.weightLifted), 0);
+        const totalLoadKg = exercises.reduce((sum, entry) => sum + entry.sets * entry.reps * entry.weightLifted, 0);
+        const uniqueRegions = [...new Set(exercises.map((entry) => entry.bodyRegion).filter(Boolean))];
+
+        data.exercises = exercises;
+        data.sets = totalSets;
+        data.reps = totalReps;
+        data.weightLifted = Math.round((heaviestLift + Number.EPSILON) * 100) / 100;
+        data.totalLoadKg = Math.round((totalLoadKg + Number.EPSILON) * 100) / 100;
+
+        if (data.bodyRegion === undefined) {
+          data.bodyRegion = uniqueRegions.length === 1 ? uniqueRegions[0] : "Mixed";
+        }
+      }
+    }
+  }
+
   if (raw.bodyRegion !== undefined) {
     const bodyRegion = parseText(raw.bodyRegion);
-    if (bodyRegion.length > 100) {
+    if (!bodyRegion) {
+      addError(errors, "bodyRegion", "bodyRegion cannot be empty.");
+    } else if (bodyRegion.length > 100) {
       addError(errors, "bodyRegion", "bodyRegion must be 100 characters or fewer.");
     } else {
       data.bodyRegion = bodyRegion;
     }
+  } else if (!partial && data.bodyRegion === undefined) {
+    data.bodyRegion = "Other";
   }
 
   if (raw.intensity !== undefined) {
-    const intensity = parseText(raw.intensity);
-    if (intensity.length > 30) {
+    const intensityRaw = parseText(raw.intensity);
+    const intensity = intensityRaw
+      ? intensityRaw.charAt(0).toUpperCase() + intensityRaw.slice(1).toLowerCase()
+      : "";
+
+    if (!intensity) {
+      addError(errors, "intensity", "intensity cannot be empty.");
+    } else if (intensity.length > 30) {
       addError(errors, "intensity", "intensity must be 30 characters or fewer.");
+    } else if (!isAllowedValue(intensity, allowedIntensity)) {
+      addError(errors, "intensity", `intensity must be one of: ${allowedIntensity.join(", ")}.`);
     } else {
       data.intensity = intensity;
     }
+  } else if (!partial) {
+    data.intensity = "Medium";
+  }
+
+  if (!hasExercises && data.weightLifted !== undefined && data.sets !== undefined && data.reps !== undefined) {
+    const totalLoadKg = data.sets * data.reps * data.weightLifted;
+    data.totalLoadKg = Math.round((totalLoadKg + Number.EPSILON) * 100) / 100;
   }
 
   return {
