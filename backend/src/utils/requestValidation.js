@@ -255,11 +255,16 @@ function validateWorkoutInput(raw = {}, { partial = false } = {}) {
 
         const name = parseText(exercise.name);
         const bodyRegion = parseText(exercise.bodyRegion || "");
-        const sets = parseInteger(exercise.sets);
-        const reps = parseInteger(exercise.reps);
-        const weightLifted = parseNumber(exercise.weightLifted);
+        let sets = parseInteger(exercise.sets);
+        let reps = parseNumber(exercise.reps);
+        let weightLifted = parseNumber(exercise.weightLifted);
         const restSecondsRaw = exercise.restSeconds;
-        const restSeconds = restSecondsRaw === undefined || restSecondsRaw === null || restSecondsRaw === "" ? null : parseInteger(restSecondsRaw);
+        const restSeconds =
+          restSecondsRaw === undefined || restSecondsRaw === null || restSecondsRaw === ""
+            ? null
+            : parseInteger(restSecondsRaw);
+        const hasSetLogs = exercise.setLogs !== undefined;
+        const normalizedSetLogs = [];
 
         if (!name) {
           addError(errors, `${fieldPrefix}.name`, "Exercise name is required.");
@@ -271,20 +276,67 @@ function validateWorkoutInput(raw = {}, { partial = false } = {}) {
           addError(errors, `${fieldPrefix}.bodyRegion`, "bodyRegion must be 100 characters or fewer.");
         }
 
-        if (sets === null || sets < 1 || sets > 100) {
-          addError(errors, `${fieldPrefix}.sets`, "sets must be an integer between 1 and 100.");
-        }
+        if (hasSetLogs) {
+          if (!Array.isArray(exercise.setLogs)) {
+            addError(errors, `${fieldPrefix}.setLogs`, "setLogs must be an array.");
+          } else if (exercise.setLogs.length === 0) {
+            addError(errors, `${fieldPrefix}.setLogs`, "Add at least one set log.");
+          } else if (exercise.setLogs.length > 100) {
+            addError(errors, `${fieldPrefix}.setLogs`, "An exercise can have at most 100 set logs.");
+          } else {
+            exercise.setLogs.forEach((setLog, setIndex) => {
+              const setField = `${fieldPrefix}.setLogs[${setIndex}]`;
+              if (!setLog || typeof setLog !== "object") {
+                addError(errors, setField, `${setField} must be a valid object.`);
+                return;
+              }
 
-        if (reps === null || reps < 1 || reps > 300) {
-          addError(errors, `${fieldPrefix}.reps`, "reps must be an integer between 1 and 300.");
-        }
+              const setReps = parseInteger(setLog.reps);
+              const setWeight = parseNumber(setLog.weightLifted);
 
-        if (weightLifted === null || weightLifted < 0 || weightLifted > 2000) {
-          addError(errors, `${fieldPrefix}.weightLifted`, "weightLifted must be a number between 0 and 2000.");
+              if (setReps === null || setReps < 1 || setReps > 300) {
+                addError(errors, `${setField}.reps`, "reps must be an integer between 1 and 300.");
+              }
+              if (setWeight === null || setWeight < 0 || setWeight > 2000) {
+                addError(errors, `${setField}.weightLifted`, "weightLifted must be between 0 and 2000.");
+              }
+
+              if (setReps !== null && setReps >= 1 && setReps <= 300 && setWeight !== null && setWeight >= 0 && setWeight <= 2000) {
+                normalizedSetLogs.push({
+                  reps: setReps,
+                  weightLifted: setWeight,
+                });
+              }
+            });
+          }
         }
 
         if (restSeconds !== null && (restSeconds < 0 || restSeconds > 1800)) {
           addError(errors, `${fieldPrefix}.restSeconds`, "restSeconds must be between 0 and 1800.");
+        }
+
+        if (!hasSetLogs) {
+          if (sets === null || sets < 1 || sets > 100) {
+            addError(errors, `${fieldPrefix}.sets`, "sets must be an integer between 1 and 100.");
+          }
+
+          const parsedLegacyReps = parseInteger(exercise.reps);
+          if (parsedLegacyReps === null || parsedLegacyReps < 1 || parsedLegacyReps > 300) {
+            addError(errors, `${fieldPrefix}.reps`, "reps must be an integer between 1 and 300.");
+          } else {
+            reps = parsedLegacyReps;
+          }
+
+          if (weightLifted === null || weightLifted < 0 || weightLifted > 2000) {
+            addError(errors, `${fieldPrefix}.weightLifted`, "weightLifted must be a number between 0 and 2000.");
+          }
+        } else if (normalizedSetLogs.length > 0) {
+          const totalSets = normalizedSetLogs.length;
+          const totalReps = normalizedSetLogs.reduce((sum, setLog) => sum + setLog.reps, 0);
+          const totalSetWeight = normalizedSetLogs.reduce((sum, setLog) => sum + setLog.weightLifted, 0);
+          sets = totalSets;
+          reps = totalSets > 0 ? totalReps / totalSets : 0;
+          weightLifted = totalSets > 0 ? totalSetWeight / totalSets : 0;
         }
 
         if (errors.length > 0) {
@@ -297,21 +349,35 @@ function validateWorkoutInput(raw = {}, { partial = false } = {}) {
           sets,
           reps,
           weightLifted,
+          ...(normalizedSetLogs.length > 0 ? { setLogs: normalizedSetLogs } : {}),
           ...(restSeconds !== null ? { restSeconds } : {}),
         });
       });
 
       if (exercises.length > 0) {
         const totalSets = exercises.reduce((sum, entry) => sum + entry.sets, 0);
-        const totalReps = exercises.reduce((sum, entry) => sum + entry.reps, 0);
-        const heaviestLift = exercises.reduce((maxValue, entry) => Math.max(maxValue, entry.weightLifted), 0);
+        const totalReps = exercises.reduce((sum, entry) => {
+          if (Array.isArray(entry.setLogs) && entry.setLogs.length > 0) {
+            return sum + entry.setLogs.reduce((entryReps, setLog) => entryReps + setLog.reps, 0);
+          }
+
+          return sum + (entry.sets * entry.reps);
+        }, 0);
+        const heaviestLift = exercises.reduce((maxValue, entry) => {
+          if (Array.isArray(entry.setLogs) && entry.setLogs.length > 0) {
+            const maxSetWeight = entry.setLogs.reduce((setMax, setLog) => Math.max(setMax, setLog.weightLifted), 0);
+            return Math.max(maxValue, maxSetWeight);
+          }
+
+          return Math.max(maxValue, entry.weightLifted);
+        }, 0);
         const totalSetWeightKg = exercises.reduce((sum, entry) => sum + entry.sets * entry.weightLifted, 0);
         const averageSetWeightKg = totalSets > 0 ? totalSetWeightKg / totalSets : 0;
         const uniqueRegions = [...new Set(exercises.map((entry) => entry.bodyRegion).filter(Boolean))];
 
         data.exercises = exercises;
         data.sets = totalSets;
-        data.reps = totalReps;
+        data.reps = Math.round((totalReps + Number.EPSILON) * 100) / 100;
         data.weightLifted = Math.round((heaviestLift + Number.EPSILON) * 100) / 100;
         data.totalLoadKg = Math.round((averageSetWeightKg + Number.EPSILON) * 100) / 100;
         data.averageSetWeightKg = Math.round((averageSetWeightKg + Number.EPSILON) * 100) / 100;

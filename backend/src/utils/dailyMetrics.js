@@ -92,13 +92,25 @@ function getWorkoutSetStats(record) {
   if (Array.isArray(record.exercises) && record.exercises.length > 0) {
     return record.exercises.reduce(
       (accumulator, exercise) => {
-        const sets = Number(exercise?.sets) || 0;
-        const reps = Number(exercise?.reps) || 0;
-        const weight = Number(exercise?.weightLifted) || 0;
+        const setLogs = Array.isArray(exercise?.setLogs) ? exercise.setLogs : [];
+        const hasSetLogs = setLogs.length > 0;
+        const sets = hasSetLogs ? setLogs.length : Number(exercise?.sets) || 0;
+        const totalReps = hasSetLogs
+          ? setLogs.reduce((sum, setLog) => sum + (Number(setLog?.reps) || 0), 0)
+          : (Number(exercise?.reps) || 0) * sets;
+        const totalSetWeight = hasSetLogs
+          ? setLogs.reduce((sum, setLog) => sum + (Number(setLog?.weightLifted) || 0), 0)
+          : sets * (Number(exercise?.weightLifted) || 0);
+        const totalVolume = hasSetLogs
+          ? setLogs.reduce(
+              (sum, setLog) => sum + (Number(setLog?.reps) || 0) * (Number(setLog?.weightLifted) || 0),
+              0
+            )
+          : (Number(exercise?.weightLifted) || 0) * totalReps;
         return {
           totalSets: accumulator.totalSets + sets,
-          totalSetWeightKg: accumulator.totalSetWeightKg + sets * weight,
-          totalVolumeKg: accumulator.totalVolumeKg + sets * reps * weight,
+          totalSetWeightKg: accumulator.totalSetWeightKg + totalSetWeight,
+          totalVolumeKg: accumulator.totalVolumeKg + totalVolume,
         };
       },
       { totalSets: 0, totalSetWeightKg: 0, totalVolumeKg: 0 }

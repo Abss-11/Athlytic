@@ -7,9 +7,14 @@ import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import ProgressBar from "../components/ui/ProgressBar";
 import { useToast } from "../context/ToastContext";
-import { extractApiErrorMessage, isPositiveNumber } from "../lib/validation";
+import { extractApiErrorMessage } from "../lib/validation";
 
 type WorkoutIntensity = "Low" | "Medium" | "High" | "Max";
+
+type WorkoutSetLog = {
+  reps: number;
+  weightLifted: number;
+};
 
 type WorkoutExercise = {
   name: string;
@@ -18,6 +23,7 @@ type WorkoutExercise = {
   reps: number;
   weightLifted: number;
   restSeconds?: number;
+  setLogs?: WorkoutSetLog[];
 };
 
 type WorkoutLog = {
@@ -36,14 +42,18 @@ type WorkoutLog = {
   exercises?: WorkoutExercise[];
 };
 
+type SetLogForm = {
+  id: string;
+  reps: string;
+  weightLifted: string;
+};
+
 type ExerciseForm = {
   id: string;
   name: string;
   bodyRegion: string;
-  sets: string;
-  reps: string;
-  weightLifted: string;
   restSeconds: string;
+  setLogs: SetLogForm[];
 };
 
 type WorkoutForm = {
@@ -122,24 +132,9 @@ function createExerciseId() {
   return `exercise-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function createEmptyExercise(): ExerciseForm {
-  return {
-    id: createExerciseId(),
-    name: "",
-    bodyRegion: "Other",
-    sets: "",
-    reps: "",
-    weightLifted: "",
-    restSeconds: "",
-  };
+function createSetLogId() {
+  return `set-${Math.random().toString(36).slice(2, 10)}`;
 }
-
-const initialForm: WorkoutForm = {
-  focus: "",
-  durationMinutes: "",
-  intensity: "Medium",
-  exercises: [createEmptyExercise()],
-};
 
 function round(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -154,6 +149,56 @@ function parseOptionalNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function createEmptySetLog(): SetLogForm {
+  return {
+    id: createSetLogId(),
+    reps: "",
+    weightLifted: "",
+  };
+}
+
+function createEmptyExercise(): ExerciseForm {
+  return {
+    id: createExerciseId(),
+    name: "",
+    bodyRegion: "Other",
+    restSeconds: "",
+    setLogs: [createEmptySetLog()],
+  };
+}
+
+const initialForm: WorkoutForm = {
+  focus: "",
+  durationMinutes: "",
+  intensity: "Medium",
+  exercises: [createEmptyExercise()],
+};
+
+function normalizeExerciseSetLogs(exercise: WorkoutExercise): WorkoutSetLog[] {
+  if (Array.isArray(exercise.setLogs) && exercise.setLogs.length > 0) {
+    return exercise.setLogs
+      .map((setLog) => ({
+        reps: Number(setLog.reps) || 0,
+        weightLifted: Number(setLog.weightLifted) || 0,
+      }))
+      .filter((setLog) => setLog.reps > 0 || setLog.weightLifted > 0);
+  }
+
+  const sets = Number(exercise.sets) || 0;
+  const reps = Number(exercise.reps) || 0;
+  const weightLifted = Number(exercise.weightLifted) || 0;
+
+  if (sets <= 0) {
+    return [];
+  }
+
+  const safeReps = reps > 0 ? reps : 1;
+  return Array.from({ length: sets }, () => ({
+    reps: safeReps,
+    weightLifted: weightLifted > 0 ? weightLifted : 0,
+  }));
+}
+
 function getWorkoutExercises(workout: WorkoutLog): WorkoutExercise[] {
   if (Array.isArray(workout.exercises) && workout.exercises.length > 0) {
     return workout.exercises;
@@ -166,8 +211,35 @@ function getWorkoutExercises(workout: WorkoutLog): WorkoutExercise[] {
       sets: workout.sets || 0,
       reps: workout.reps || 0,
       weightLifted: workout.weightLifted || 0,
+      setLogs: [],
     },
   ];
+}
+
+function getExerciseDerivedStats(exercise: WorkoutExercise) {
+  const normalizedSetLogs = normalizeExerciseSetLogs(exercise);
+  const totalSets = normalizedSetLogs.length;
+  const totalReps = normalizedSetLogs.reduce((sum, setLog) => sum + setLog.reps, 0);
+  const totalSetWeight = normalizedSetLogs.reduce((sum, setLog) => sum + setLog.weightLifted, 0);
+
+  if (totalSets > 0) {
+    return {
+      sets: totalSets,
+      avgReps: round(totalReps / totalSets),
+      avgSetWeightKg: round(totalSetWeight / totalSets),
+      setLogs: normalizedSetLogs,
+    };
+  }
+
+  const sets = Number(exercise.sets) || 0;
+  const reps = Number(exercise.reps) || 0;
+  const weightLifted = Number(exercise.weightLifted) || 0;
+  return {
+    sets,
+    avgReps: reps,
+    avgSetWeightKg: weightLifted,
+    setLogs: [],
+  };
 }
 
 function getSessionAverageSetWeightKg(workout: WorkoutLog) {
@@ -178,11 +250,10 @@ function getSessionAverageSetWeightKg(workout: WorkoutLog) {
   const exercises = getWorkoutExercises(workout);
   const totals = exercises.reduce(
     (accumulator, exercise) => {
-      const sets = exercise.sets || 0;
-      const weightLifted = exercise.weightLifted || 0;
+      const stats = getExerciseDerivedStats(exercise);
       return {
-        sets: accumulator.sets + sets,
-        setWeight: accumulator.setWeight + sets * weightLifted,
+        sets: accumulator.sets + stats.sets,
+        setWeight: accumulator.setWeight + stats.avgSetWeightKg * stats.sets,
       };
     },
     { sets: 0, setWeight: 0 }
@@ -196,14 +267,20 @@ function getSessionAverageSetWeightKg(workout: WorkoutLog) {
 }
 
 function toExerciseForm(exercise: WorkoutExercise): ExerciseForm {
+  const setLogs = normalizeExerciseSetLogs(exercise);
   return {
     id: createExerciseId(),
     name: exercise.name || "",
     bodyRegion: exercise.bodyRegion || "Other",
-    sets: exercise.sets ? String(exercise.sets) : "",
-    reps: exercise.reps ? String(exercise.reps) : "",
-    weightLifted: String(exercise.weightLifted ?? 0),
     restSeconds: exercise.restSeconds ? String(exercise.restSeconds) : "",
+    setLogs:
+      setLogs.length > 0
+        ? setLogs.map((setLog) => ({
+            id: createSetLogId(),
+            reps: String(setLog.reps),
+            weightLifted: String(setLog.weightLifted),
+          }))
+        : [createEmptySetLog()],
   };
 }
 
@@ -286,6 +363,13 @@ export default function WorkoutPage() {
     }));
   }
 
+  function updateSetLog(exerciseId: string, setId: string, updater: (setLog: SetLogForm) => SetLogForm) {
+    updateExercise(exerciseId, (exercise) => ({
+      ...exercise,
+      setLogs: exercise.setLogs.map((setLog) => (setLog.id === setId ? updater(setLog) : setLog)),
+    }));
+  }
+
   function handleAddExercise() {
     setForm((current) => ({
       ...current,
@@ -309,6 +393,29 @@ export default function WorkoutPage() {
     });
   }
 
+  function handleAddSet(exerciseId: string) {
+    updateExercise(exerciseId, (exercise) => ({
+      ...exercise,
+      setLogs: [...exercise.setLogs, createEmptySetLog()],
+    }));
+  }
+
+  function handleRemoveSet(exerciseId: string, setId: string) {
+    updateExercise(exerciseId, (exercise) => {
+      if (exercise.setLogs.length <= 1) {
+        return {
+          ...exercise,
+          setLogs: [createEmptySetLog()],
+        };
+      }
+
+      return {
+        ...exercise,
+        setLogs: exercise.setLogs.filter((setLog) => setLog.id !== setId),
+      };
+    });
+  }
+
   function resetForm() {
     setForm({
       ...initialForm,
@@ -317,7 +424,12 @@ export default function WorkoutPage() {
   }
 
   function buildExercisePayload() {
-    const payload = [];
+    const payload: Array<{
+      name: string;
+      bodyRegion: string;
+      restSeconds?: number;
+      setLogs: Array<{ reps: number; weightLifted: number }>;
+    }> = [];
 
     for (let index = 0; index < form.exercises.length; index += 1) {
       const exercise = form.exercises[index];
@@ -327,18 +439,6 @@ export default function WorkoutPage() {
         pushToast(`${exerciseLabel}: name is required.`, "error");
         return null;
       }
-      if (!isPositiveNumber(exercise.sets) || !Number.isInteger(Number(exercise.sets))) {
-        pushToast(`${exerciseLabel}: sets must be a positive whole number.`, "error");
-        return null;
-      }
-      if (!isPositiveNumber(exercise.reps) || !Number.isInteger(Number(exercise.reps))) {
-        pushToast(`${exerciseLabel}: reps must be a positive whole number.`, "error");
-        return null;
-      }
-      if (exercise.weightLifted.trim() === "" || Number(exercise.weightLifted) < 0 || Number.isNaN(Number(exercise.weightLifted))) {
-        pushToast(`${exerciseLabel}: weight must be zero or more.`, "error");
-        return null;
-      }
 
       const restSeconds = parseOptionalNumber(exercise.restSeconds);
       if (restSeconds !== undefined && (!Number.isInteger(restSeconds) || restSeconds < 0 || restSeconds > 1800)) {
@@ -346,13 +446,39 @@ export default function WorkoutPage() {
         return null;
       }
 
+      if (exercise.setLogs.length === 0) {
+        pushToast(`${exerciseLabel}: add at least one set.`, "error");
+        return null;
+      }
+
+      const setLogs: Array<{ reps: number; weightLifted: number }> = [];
+      for (let setIndex = 0; setIndex < exercise.setLogs.length; setIndex += 1) {
+        const setLog = exercise.setLogs[setIndex];
+        const setLabel = `${exerciseLabel}, Set ${setIndex + 1}`;
+        const reps = Number(setLog.reps);
+        const weightLifted = Number(setLog.weightLifted);
+
+        if (!Number.isInteger(reps) || reps < 1 || reps > 300) {
+          pushToast(`${setLabel}: reps must be a whole number between 1 and 300.`, "error");
+          return null;
+        }
+
+        if (Number.isNaN(weightLifted) || weightLifted < 0 || weightLifted > 2000) {
+          pushToast(`${setLabel}: weight must be between 0 and 2000 kg.`, "error");
+          return null;
+        }
+
+        setLogs.push({
+          reps,
+          weightLifted,
+        });
+      }
+
       payload.push({
         name: exercise.name.trim(),
         bodyRegion: exercise.bodyRegion || "Other",
-        sets: Number(exercise.sets),
-        reps: Number(exercise.reps),
-        weightLifted: Number(exercise.weightLifted),
         ...(restSeconds !== undefined ? { restSeconds } : {}),
+        setLogs,
       });
     }
 
@@ -370,6 +496,12 @@ export default function WorkoutPage() {
       return;
     }
 
+    const durationMinutes = parseOptionalNumber(form.durationMinutes);
+    if (durationMinutes !== undefined && (durationMinutes < 1 || durationMinutes > 720)) {
+      pushToast("Duration must be between 1 and 720 minutes.", "error");
+      return;
+    }
+
     const exercises = buildExercisePayload();
     if (!exercises) {
       return;
@@ -379,7 +511,7 @@ export default function WorkoutPage() {
     try {
       const payload = {
         focus: form.focus.trim(),
-        durationMinutes: parseOptionalNumber(form.durationMinutes),
+        durationMinutes,
         intensity: form.intensity,
         exercises,
       };
@@ -433,11 +565,21 @@ export default function WorkoutPage() {
 
     setIsUndoing(true);
     try {
+      const restoreExercises = getWorkoutExercises(deletedItem).map((exercise) => ({
+        name: exercise.name,
+        bodyRegion: exercise.bodyRegion || "Other",
+        ...(exercise.restSeconds ? { restSeconds: exercise.restSeconds } : {}),
+        setLogs: normalizeExerciseSetLogs(exercise).map((setLog) => ({
+          reps: setLog.reps,
+          weightLifted: setLog.weightLifted,
+        })),
+      }));
+
       await workoutApi.create({
         focus: deletedItem.focus,
         ...(deletedItem.durationMinutes > 0 ? { durationMinutes: deletedItem.durationMinutes } : {}),
         intensity: deletedItem.intensity,
-        exercises: getWorkoutExercises(deletedItem),
+        exercises: restoreExercises,
       });
       setDeletedItem(null);
       pushToast("Workout session restored.", "success");
@@ -474,9 +616,9 @@ export default function WorkoutPage() {
     <div>
       <PageHeader
         eyebrow="Workout tracker"
-        title="Build full training sessions, then analyze average set weight week by week."
-        description="Session Builder lets you log multiple exercises in one workout. Analytics now show today vs yesterday momentum and this-week muscle-group strength intensity."
-        badge={editingId ? "Editing session" : "Session Builder live"}
+        title="Track each set, then analyze average set weight by session and muscle group."
+        description="Log every set with reps and weight. Athlytic computes exercise averages and weekly muscle-group intensity automatically."
+        badge={editingId ? "Editing session" : "Set-level logging live"}
       />
 
       {deletedItem ? (
@@ -540,10 +682,11 @@ export default function WorkoutPage() {
                         Exercise {index + 1}
                       </p>
                       <Button type="button" variant="ghost" onClick={() => handleRemoveExercise(exercise.id)}>
-                        Remove
+                        Remove exercise
                       </Button>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2">
+
+                    <div className="grid gap-3 md:grid-cols-3">
                       <Input
                         placeholder="Exercise name"
                         value={exercise.name}
@@ -564,32 +707,6 @@ export default function WorkoutPage() {
                           </option>
                         ))}
                       </select>
-                    </div>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                      <Input
-                        type="number"
-                        placeholder="Sets"
-                        value={exercise.sets}
-                        onChange={(event) =>
-                          updateExercise(exercise.id, (current) => ({ ...current, sets: event.target.value }))
-                        }
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Reps"
-                        value={exercise.reps}
-                        onChange={(event) =>
-                          updateExercise(exercise.id, (current) => ({ ...current, reps: event.target.value }))
-                        }
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Weight (kg)"
-                        value={exercise.weightLifted}
-                        onChange={(event) =>
-                          updateExercise(exercise.id, (current) => ({ ...current, weightLifted: event.target.value }))
-                        }
-                      />
                       <Input
                         type="number"
                         placeholder="Rest (sec)"
@@ -598,6 +715,41 @@ export default function WorkoutPage() {
                           updateExercise(exercise.id, (current) => ({ ...current, restSeconds: event.target.value }))
                         }
                       />
+                    </div>
+
+                    <div className="mt-4 rounded-2xl border border-app-border/60 bg-app-surface/55 p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-app-text-soft">Set logs</p>
+                        <Button type="button" variant="ghost" onClick={() => handleAddSet(exercise.id)}>
+                          Add set
+                        </Button>
+                      </div>
+                      <div className="grid gap-2">
+                        {exercise.setLogs.map((setLog, setIndex) => (
+                          <div key={setLog.id} className="grid gap-2 rounded-xl bg-app-surface-strong p-2 sm:grid-cols-[0.8fr_1fr_1fr_auto] sm:items-center">
+                            <p className="text-xs font-semibold text-app-text-soft">Set {setIndex + 1}</p>
+                            <Input
+                              type="number"
+                              placeholder="Reps"
+                              value={setLog.reps}
+                              onChange={(event) =>
+                                updateSetLog(exercise.id, setLog.id, (current) => ({ ...current, reps: event.target.value }))
+                              }
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Weight (kg)"
+                              value={setLog.weightLifted}
+                              onChange={(event) =>
+                                updateSetLog(exercise.id, setLog.id, (current) => ({ ...current, weightLifted: event.target.value }))
+                              }
+                            />
+                            <Button type="button" variant="ghost" onClick={() => handleRemoveSet(exercise.id, setLog.id)}>
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -700,9 +852,7 @@ export default function WorkoutPage() {
               <select
                 className={selectClassName}
                 value={intensityFilter}
-                onChange={(event) =>
-                  setIntensityFilter((event.target.value as "All" | WorkoutIntensity) || "All")
-                }
+                onChange={(event) => setIntensityFilter((event.target.value as "All" | WorkoutIntensity) || "All")}
               >
                 <option value="All">All intensities</option>
                 {intensityOptions.map((intensity) => (
@@ -748,7 +898,10 @@ export default function WorkoutPage() {
                         <p className="mt-2 text-xs text-app-text-soft">
                           {exercises
                             .slice(0, 4)
-                            .map((exercise) => `${exercise.name} (${exercise.sets}x${exercise.reps})`)
+                            .map((exercise) => {
+                              const stats = getExerciseDerivedStats(exercise);
+                              return `${exercise.name} (${stats.sets} sets · ${stats.avgSetWeightKg}kg avg)`;
+                            })
                             .join(" • ")}
                           {exercises.length > 4 ? " • ..." : ""}
                         </p>

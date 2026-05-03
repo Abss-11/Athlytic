@@ -40,6 +40,7 @@ function getWorkoutExercises(record) {
       sets: Number(record.sets) || 0,
       reps: Number(record.reps) || 0,
       weightLifted: Number(record.weightLifted) || 0,
+      setLogs: [],
     },
   ];
 }
@@ -67,9 +68,12 @@ function buildMuscleGroupStats(records) {
     const seenRegionsForSession = new Set();
     getWorkoutExercises(record).forEach((exercise) => {
       const region = exercise.bodyRegion || "Other";
-      const sets = Number(exercise.sets) || 0;
-      const weightLifted = Number(exercise.weightLifted) || 0;
-      const setWeightKg = sets * weightLifted;
+      const setLogs = Array.isArray(exercise.setLogs) ? exercise.setLogs : [];
+      const hasSetLogs = setLogs.length > 0;
+      const sets = hasSetLogs ? setLogs.length : Number(exercise.sets) || 0;
+      const setWeightKg = hasSetLogs
+        ? setLogs.reduce((sum, setLog) => sum + (Number(setLog.weightLifted) || 0), 0)
+        : sets * (Number(exercise.weightLifted) || 0);
       const existing = regionMap.get(region) || { region, sessions: 0, sets: 0, totalSetWeightKg: 0 };
 
       existing.sets += sets;

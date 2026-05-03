@@ -1,5 +1,13 @@
 const mongoose = require("mongoose");
 
+const setLogSchema = new mongoose.Schema(
+  {
+    reps: { type: Number, min: 1, required: true },
+    weightLifted: { type: Number, min: 0, required: true },
+  },
+  { _id: false }
+);
+
 const exerciseSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -8,6 +16,7 @@ const exerciseSchema = new mongoose.Schema(
     reps: { type: Number, min: 1 },
     weightLifted: { type: Number, min: 0 },
     restSeconds: { type: Number, min: 0, max: 1800 },
+    setLogs: [setLogSchema],
   },
   { _id: false }
 );
