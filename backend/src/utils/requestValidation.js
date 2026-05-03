@@ -305,14 +305,16 @@ function validateWorkoutInput(raw = {}, { partial = false } = {}) {
         const totalSets = exercises.reduce((sum, entry) => sum + entry.sets, 0);
         const totalReps = exercises.reduce((sum, entry) => sum + entry.reps, 0);
         const heaviestLift = exercises.reduce((maxValue, entry) => Math.max(maxValue, entry.weightLifted), 0);
-        const totalLoadKg = exercises.reduce((sum, entry) => sum + entry.sets * entry.reps * entry.weightLifted, 0);
+        const totalSetWeightKg = exercises.reduce((sum, entry) => sum + entry.sets * entry.weightLifted, 0);
+        const averageSetWeightKg = totalSets > 0 ? totalSetWeightKg / totalSets : 0;
         const uniqueRegions = [...new Set(exercises.map((entry) => entry.bodyRegion).filter(Boolean))];
 
         data.exercises = exercises;
         data.sets = totalSets;
         data.reps = totalReps;
         data.weightLifted = Math.round((heaviestLift + Number.EPSILON) * 100) / 100;
-        data.totalLoadKg = Math.round((totalLoadKg + Number.EPSILON) * 100) / 100;
+        data.totalLoadKg = Math.round((averageSetWeightKg + Number.EPSILON) * 100) / 100;
+        data.averageSetWeightKg = Math.round((averageSetWeightKg + Number.EPSILON) * 100) / 100;
 
         if (data.bodyRegion === undefined) {
           data.bodyRegion = uniqueRegions.length === 1 ? uniqueRegions[0] : "Mixed";
@@ -354,8 +356,8 @@ function validateWorkoutInput(raw = {}, { partial = false } = {}) {
   }
 
   if (!hasExercises && data.weightLifted !== undefined && data.sets !== undefined && data.reps !== undefined) {
-    const totalLoadKg = data.sets * data.reps * data.weightLifted;
-    data.totalLoadKg = Math.round((totalLoadKg + Number.EPSILON) * 100) / 100;
+    data.totalLoadKg = Math.round((data.weightLifted + Number.EPSILON) * 100) / 100;
+    data.averageSetWeightKg = Math.round((data.weightLifted + Number.EPSILON) * 100) / 100;
   }
 
   return {

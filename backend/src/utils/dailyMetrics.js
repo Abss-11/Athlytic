@@ -80,37 +80,67 @@ function sumWorkoutDuration(records) {
   return records.reduce((duration, record) => duration + (record.durationMinutes || 0), 0);
 }
 
-function getWorkoutVolume(record) {
+function getWorkoutSetStats(record) {
   if (!record || typeof record !== "object") {
-    return 0;
-  }
-
-  if (typeof record.totalLoadKg === "number" && Number.isFinite(record.totalLoadKg) && record.totalLoadKg >= 0) {
-    return record.totalLoadKg;
+    return {
+      totalSets: 0,
+      totalSetWeightKg: 0,
+      totalVolumeKg: 0,
+    };
   }
 
   if (Array.isArray(record.exercises) && record.exercises.length > 0) {
-    return record.exercises.reduce((accumulator, exercise) => {
-      const sets = Number(exercise?.sets) || 0;
-      const reps = Number(exercise?.reps) || 0;
-      const weight = Number(exercise?.weightLifted) || 0;
-      return accumulator + sets * reps * weight;
-    }, 0);
+    return record.exercises.reduce(
+      (accumulator, exercise) => {
+        const sets = Number(exercise?.sets) || 0;
+        const reps = Number(exercise?.reps) || 0;
+        const weight = Number(exercise?.weightLifted) || 0;
+        return {
+          totalSets: accumulator.totalSets + sets,
+          totalSetWeightKg: accumulator.totalSetWeightKg + sets * weight,
+          totalVolumeKg: accumulator.totalVolumeKg + sets * reps * weight,
+        };
+      },
+      { totalSets: 0, totalSetWeightKg: 0, totalVolumeKg: 0 }
+    );
   }
 
   const sets = Number(record.sets) || 0;
   const reps = Number(record.reps) || 0;
   const weight = Number(record.weightLifted) || 0;
 
-  if (sets > 0 && reps > 0 && weight > 0) {
-    return sets * reps * weight;
-  }
+  return {
+    totalSets: sets,
+    totalSetWeightKg: sets * weight,
+    totalVolumeKg: sets * reps * weight,
+  };
+}
 
-  return weight;
+function getWorkoutVolume(record) {
+  return getWorkoutSetStats(record).totalVolumeKg;
 }
 
 function sumWorkoutVolume(records) {
   return records.reduce((volume, record) => volume + getWorkoutVolume(record), 0);
+}
+
+function calculateAverageSetWeight(records) {
+  const aggregate = records.reduce(
+    (accumulator, record) => {
+      const stats = getWorkoutSetStats(record);
+      return {
+        totalSets: accumulator.totalSets + stats.totalSets,
+        totalSetWeightKg: accumulator.totalSetWeightKg + stats.totalSetWeightKg,
+      };
+    },
+    { totalSets: 0, totalSetWeightKg: 0 }
+  );
+
+  if (aggregate.totalSets <= 0) {
+    return 0;
+  }
+
+  return round(aggregate.totalSetWeightKg / aggregate.totalSets);
 }
 
 function sumWeightLifted(records) {
@@ -196,6 +226,7 @@ module.exports = {
   sumNutrition,
   sumRunningDistance,
   sumWorkoutDuration,
+  calculateAverageSetWeight,
   sumWorkoutVolume,
   sumWeightLifted,
   sumSleepHours,

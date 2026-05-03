@@ -27,7 +27,8 @@ type WorkoutLog = {
   sets: number;
   reps: number;
   weightLifted: number;
-  totalLoadKg: number;
+  totalLoadKg?: number;
+  averageSetWeightKg?: number;
   durationMinutes: number;
   intensity: WorkoutIntensity;
   createdAt?: string;
@@ -57,15 +58,15 @@ type WorkoutSnapshot = {
   exercises: number;
   sets: number;
   durationMinutes: number;
-  volumeKg: number;
+  avgSetWeightKg: number;
 };
 
 type MuscleGroupTrend = {
   region: string;
   sessions: number;
   sets: number;
-  volumeKg: number;
-  deltaVolumeKg: number;
+  avgSetWeightKg: number;
+  deltaAvgSetWeightKg: number;
   deltaPercent: number | null;
 };
 
@@ -77,11 +78,11 @@ type WorkoutSummary = {
   deltas: {
     sessions: string;
     duration: string;
-    volumeKg: string;
+    avgSetWeightKg: string;
   };
   muscleGroups: {
     thisWeek: MuscleGroupTrend[];
-    totalVolumeKg: number;
+    avgSetWeightKg: number;
     totalSets: number;
   };
 };
@@ -105,12 +106,16 @@ const selectClassName =
   "w-full rounded-2xl border border-app-border bg-app-surface px-4 py-3 text-sm text-app-text outline-none transition focus:border-app-primary focus:ring-4 focus:ring-app-primary/15";
 
 const emptySummary: WorkoutSummary = {
-  today: { sessions: 0, exercises: 0, sets: 0, durationMinutes: 0, volumeKg: 0 },
-  yesterday: { sessions: 0, exercises: 0, sets: 0, durationMinutes: 0, volumeKg: 0 },
-  thisWeek: { sessions: 0, exercises: 0, sets: 0, durationMinutes: 0, volumeKg: 0 },
-  lastWeek: { sessions: 0, exercises: 0, sets: 0, durationMinutes: 0, volumeKg: 0 },
-  deltas: { sessions: "No change vs yesterday", duration: "No change vs yesterday", volumeKg: "No change vs yesterday" },
-  muscleGroups: { thisWeek: [], totalVolumeKg: 0, totalSets: 0 },
+  today: { sessions: 0, exercises: 0, sets: 0, durationMinutes: 0, avgSetWeightKg: 0 },
+  yesterday: { sessions: 0, exercises: 0, sets: 0, durationMinutes: 0, avgSetWeightKg: 0 },
+  thisWeek: { sessions: 0, exercises: 0, sets: 0, durationMinutes: 0, avgSetWeightKg: 0 },
+  lastWeek: { sessions: 0, exercises: 0, sets: 0, durationMinutes: 0, avgSetWeightKg: 0 },
+  deltas: {
+    sessions: "No change vs yesterday",
+    duration: "No change vs yesterday",
+    avgSetWeightKg: "No change vs yesterday",
+  },
+  muscleGroups: { thisWeek: [], avgSetWeightKg: 0, totalSets: 0 },
 };
 
 function createExerciseId() {
@@ -165,17 +170,29 @@ function getWorkoutExercises(workout: WorkoutLog): WorkoutExercise[] {
   ];
 }
 
-function getSessionVolumeKg(workout: WorkoutLog) {
-  if (typeof workout.totalLoadKg === "number" && workout.totalLoadKg >= 0) {
-    return workout.totalLoadKg;
+function getSessionAverageSetWeightKg(workout: WorkoutLog) {
+  if (typeof workout.averageSetWeightKg === "number" && workout.averageSetWeightKg >= 0) {
+    return round(workout.averageSetWeightKg);
   }
 
   const exercises = getWorkoutExercises(workout);
-  return round(
-    exercises.reduce((volume, exercise) => {
-      return volume + (exercise.sets || 0) * (exercise.reps || 0) * (exercise.weightLifted || 0);
-    }, 0)
+  const totals = exercises.reduce(
+    (accumulator, exercise) => {
+      const sets = exercise.sets || 0;
+      const weightLifted = exercise.weightLifted || 0;
+      return {
+        sets: accumulator.sets + sets,
+        setWeight: accumulator.setWeight + sets * weightLifted,
+      };
+    },
+    { sets: 0, setWeight: 0 }
   );
+
+  if (totals.sets <= 0) {
+    return round(workout.weightLifted || 0);
+  }
+
+  return round(totals.setWeight / totals.sets);
 }
 
 function toExerciseForm(exercise: WorkoutExercise): ExerciseForm {
@@ -236,7 +253,8 @@ export default function WorkoutPage() {
         sets: entry.sets ?? 0,
         reps: entry.reps ?? 0,
         weightLifted: entry.weightLifted ?? 0,
-        totalLoadKg: entry.totalLoadKg ?? getSessionVolumeKg(entry),
+        totalLoadKg: entry.totalLoadKg,
+        averageSetWeightKg: entry.averageSetWeightKg ?? getSessionAverageSetWeightKg(entry),
         durationMinutes: entry.durationMinutes ?? 0,
         intensity: intensityOptions.includes(entry.intensity) ? entry.intensity : "Medium",
         createdAt: entry.createdAt,
@@ -448,16 +466,16 @@ export default function WorkoutPage() {
     return workout.focus.toLowerCase().includes(query) || exerciseNames.includes(query);
   });
 
-  const maxMuscleGroupVolume = summary.muscleGroups.thisWeek.reduce((maxVolume, entry) => {
-    return Math.max(maxVolume, entry.volumeKg);
+  const maxMuscleGroupWeight = summary.muscleGroups.thisWeek.reduce((maxWeight, entry) => {
+    return Math.max(maxWeight, entry.avgSetWeightKg);
   }, 0);
 
   return (
     <div>
       <PageHeader
         eyebrow="Workout tracker"
-        title="Build full training sessions, then analyze muscle-group volume week by week."
-        description="Session Builder lets you log multiple exercises in one workout. Analytics now show today vs yesterday momentum and this-week muscle-group load."
+        title="Build full training sessions, then analyze average set weight week by week."
+        description="Session Builder lets you log multiple exercises in one workout. Analytics now show today vs yesterday momentum and this-week muscle-group strength intensity."
         badge={editingId ? "Editing session" : "Session Builder live"}
       />
 
@@ -608,9 +626,9 @@ export default function WorkoutPage() {
               <p className="mt-1 text-xs text-app-text-soft">{summary.deltas.sessions}</p>
             </div>
             <div className="rounded-2xl bg-app-surface-strong p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-app-text-soft">Today volume</p>
-              <p className="mt-2 text-2xl font-bold text-app-text">{summary.today.volumeKg} kg</p>
-              <p className="mt-1 text-xs text-app-text-soft">{summary.deltas.volumeKg}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-app-text-soft">Today avg set weight</p>
+              <p className="mt-2 text-2xl font-bold text-app-text">{summary.today.avgSetWeightKg} kg/set</p>
+              <p className="mt-1 text-xs text-app-text-soft">{summary.deltas.avgSetWeightKg}</p>
             </div>
             <div className="rounded-2xl bg-app-surface-strong p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-app-text-soft">This week sets</p>
@@ -629,7 +647,7 @@ export default function WorkoutPage() {
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-app-text-soft">Muscle-group analytics</p>
                 <p className="mt-1 text-sm text-app-text-soft">
-                  This week: {summary.muscleGroups.totalSets} sets · {summary.muscleGroups.totalVolumeKg} kg total load
+                  This week: {summary.muscleGroups.totalSets} sets · {summary.muscleGroups.avgSetWeightKg} kg/set avg
                 </p>
               </div>
             </div>
@@ -640,7 +658,7 @@ export default function WorkoutPage() {
                 </div>
               ) : (
                 summary.muscleGroups.thisWeek.slice(0, 7).map((entry) => {
-                  const progress = maxMuscleGroupVolume > 0 ? (entry.volumeKg / maxMuscleGroupVolume) * 100 : 0;
+                  const progress = maxMuscleGroupWeight > 0 ? (entry.avgSetWeightKg / maxMuscleGroupWeight) * 100 : 0;
                   return (
                     <div key={entry.region}>
                       <div className="mb-2 flex items-center justify-between gap-3">
@@ -651,10 +669,10 @@ export default function WorkoutPage() {
                           </p>
                         </div>
                         <div className="text-right text-xs">
-                          <p className="font-semibold text-app-text">{entry.volumeKg} kg</p>
-                          <p className={entry.deltaVolumeKg >= 0 ? "text-emerald-300" : "text-rose-300"}>
-                            {entry.deltaVolumeKg >= 0 ? "+" : ""}
-                            {entry.deltaVolumeKg} kg
+                          <p className="font-semibold text-app-text">{entry.avgSetWeightKg} kg/set</p>
+                          <p className={entry.deltaAvgSetWeightKg >= 0 ? "text-emerald-300" : "text-rose-300"}>
+                            {entry.deltaAvgSetWeightKg >= 0 ? "+" : ""}
+                            {entry.deltaAvgSetWeightKg} kg/set
                             {entry.deltaPercent !== null ? ` (${entry.deltaPercent >= 0 ? "+" : ""}${entry.deltaPercent}%)` : " (n/a)"}
                           </p>
                         </div>
@@ -704,7 +722,7 @@ export default function WorkoutPage() {
             ) : (
               filteredItems.map((workout) => {
                 const exercises = getWorkoutExercises(workout);
-                const sessionVolume = getSessionVolumeKg(workout);
+                const sessionAverageSetWeight = getSessionAverageSetWeightKg(workout);
                 const loggedDate = workout.loggedAt || workout.createdAt;
                 return (
                   <div key={workout.id} className="rounded-3xl bg-app-surface-strong p-5">
@@ -720,7 +738,7 @@ export default function WorkoutPage() {
                         </div>
                         <p className="mt-1 text-sm text-app-text-soft">
                           {exercises.length} exercises · {workout.sets} sets · {workout.durationMinutes || 0} min ·{" "}
-                          {sessionVolume} kg load
+                          {sessionAverageSetWeight} kg/set avg
                         </p>
                         {loggedDate ? (
                           <p className="mt-1 text-xs text-app-text-soft">

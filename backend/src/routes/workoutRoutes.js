@@ -8,7 +8,7 @@ const {
   filterRecordsForDay,
   filterRecordsForWeek,
   sumWorkoutDuration,
-  sumWorkoutVolume,
+  calculateAverageSetWeight,
   buildYesterdayDeltaText,
   round,
 } = require("../utils/dailyMetrics");
@@ -49,14 +49,14 @@ function buildWorkoutSnapshot(records) {
   const exercises = records.reduce((sum, workout) => sum + getWorkoutExercises(workout).length, 0);
   const sets = records.reduce((sum, workout) => sum + (Number(workout.sets) || 0), 0);
   const durationMinutes = round(sumWorkoutDuration(records));
-  const volumeKg = round(sumWorkoutVolume(records));
+  const avgSetWeightKg = round(calculateAverageSetWeight(records));
 
   return {
     sessions,
     exercises,
     sets,
     durationMinutes,
-    volumeKg,
+    avgSetWeightKg,
   };
 }
 
@@ -68,13 +68,12 @@ function buildMuscleGroupStats(records) {
     getWorkoutExercises(record).forEach((exercise) => {
       const region = exercise.bodyRegion || "Other";
       const sets = Number(exercise.sets) || 0;
-      const reps = Number(exercise.reps) || 0;
       const weightLifted = Number(exercise.weightLifted) || 0;
-      const volumeKg = sets * reps * weightLifted;
-      const existing = regionMap.get(region) || { region, sessions: 0, sets: 0, volumeKg: 0 };
+      const setWeightKg = sets * weightLifted;
+      const existing = regionMap.get(region) || { region, sessions: 0, sets: 0, totalSetWeightKg: 0 };
 
       existing.sets += sets;
-      existing.volumeKg += volumeKg;
+      existing.totalSetWeightKg += setWeightKg;
       if (!seenRegionsForSession.has(region)) {
         existing.sessions += 1;
         seenRegionsForSession.add(region);
@@ -86,10 +85,12 @@ function buildMuscleGroupStats(records) {
 
   return Array.from(regionMap.values())
     .map((entry) => ({
-      ...entry,
-      volumeKg: round(entry.volumeKg),
+      region: entry.region,
+      sessions: entry.sessions,
+      sets: entry.sets,
+      avgSetWeightKg: entry.sets > 0 ? round(entry.totalSetWeightKg / entry.sets) : 0,
     }))
-    .sort((left, right) => right.volumeKg - left.volumeKg);
+    .sort((left, right) => right.avgSetWeightKg - left.avgSetWeightKg);
 }
 
 router.get("/", async (req, res) => {
@@ -108,7 +109,7 @@ router.get("/summary", async (req, res) => {
   const thisWeekMuscleGroups = buildMuscleGroupStats(thisWeekRecords);
   const lastWeekMuscleGroups = buildMuscleGroupStats(lastWeekRecords);
   const lastWeekMap = new Map(lastWeekMuscleGroups.map((entry) => [entry.region, entry]));
-  const thisWeekVolumeTotal = round(thisWeekMuscleGroups.reduce((sum, item) => sum + item.volumeKg, 0));
+  const thisWeekAvgSetWeightKg = round(calculateAverageSetWeight(thisWeekRecords));
   const thisWeekSetsTotal = thisWeekMuscleGroups.reduce((sum, item) => sum + item.sets, 0);
 
   res.json({
@@ -119,22 +120,28 @@ router.get("/summary", async (req, res) => {
     deltas: {
       sessions: buildYesterdayDeltaText(todayRecords.length, yesterdayRecords.length),
       duration: buildYesterdayDeltaText(sumWorkoutDuration(todayRecords), sumWorkoutDuration(yesterdayRecords), " min"),
-      volumeKg: buildYesterdayDeltaText(sumWorkoutVolume(todayRecords), sumWorkoutVolume(yesterdayRecords), " kg"),
+      avgSetWeightKg: buildYesterdayDeltaText(
+        calculateAverageSetWeight(todayRecords),
+        calculateAverageSetWeight(yesterdayRecords),
+        " kg/set"
+      ),
     },
     muscleGroups: {
       thisWeek: thisWeekMuscleGroups.map((entry) => {
         const previous = lastWeekMap.get(entry.region);
-        const deltaVolumeKg = round(entry.volumeKg - (previous?.volumeKg || 0));
+        const deltaAvgSetWeightKg = round(entry.avgSetWeightKg - (previous?.avgSetWeightKg || 0));
         const deltaPercent =
-          previous && previous.volumeKg > 0 ? round((deltaVolumeKg / previous.volumeKg) * 100) : null;
+          previous && previous.avgSetWeightKg > 0
+            ? round((deltaAvgSetWeightKg / previous.avgSetWeightKg) * 100)
+            : null;
 
         return {
           ...entry,
-          deltaVolumeKg,
+          deltaAvgSetWeightKg,
           deltaPercent,
         };
       }),
-      totalVolumeKg: thisWeekVolumeTotal,
+      avgSetWeightKg: thisWeekAvgSetWeightKg,
       totalSets: thisWeekSetsTotal,
     },
   });

@@ -21,6 +21,7 @@ const workoutSchema = new mongoose.Schema(
     reps: Number,
     weightLifted: Number,
     totalLoadKg: Number,
+    averageSetWeightKg: Number,
     durationMinutes: Number,
     intensity: String,
     exercises: [exerciseSchema],
