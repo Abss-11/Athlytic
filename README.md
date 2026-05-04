@@ -43,6 +43,11 @@ Athlytic/
       models/
       routes/
       utils/
+  mobile/
+    src/
+      api/
+      context/
+      screens/
 ```
 
 ## Local Setup
@@ -83,6 +88,37 @@ You can also run commands from the project root:
 cd /Users/abhaychaturvedi/Desktop/Athlytic
 npm run dev:backend
 npm run dev:frontend
+```
+
+### 3. Mobile App (Expo + React Native)
+
+```bash
+cd /Users/abhaychaturvedi/Desktop/Athlytic/mobile
+cp .env.example .env
+npm install
+npm run start
+```
+
+Then scan the QR from Expo Go (or run iOS/Android simulator commands).
+
+Set backend URL in `.env`:
+
+```bash
+EXPO_PUBLIC_API_URL=http://127.0.0.1:5000/api
+```
+
+If you test on a physical phone on the same Wi-Fi, use your laptop LAN IP:
+
+```bash
+EXPO_PUBLIC_API_URL=http://192.168.x.x:5000/api
+```
+
+From project root:
+
+```bash
+npm run dev:mobile
+npm run dev:mobile:ios
+npm run dev:mobile:android
 ```
 
 ## One Website Mode
