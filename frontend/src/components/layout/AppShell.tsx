@@ -1,6 +1,6 @@
 import { NavLink, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
-import { dashboardApi } from "../../api/api";
+import { dashboardApi, runningApi } from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import Button from "../ui/Button";
@@ -26,6 +26,97 @@ export default function AppShell() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; type: string }[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportStats, setReportStats] = useState<{
+    totalKm: number;
+    avgPace: string;
+    activeDay: string;
+  } | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
+  const handleOpenReport = async () => {
+    setShowReportModal(true);
+    setIsGeneratingReport(true);
+    try {
+      const response = await runningApi.list();
+      const runs = Array.isArray(response.data) ? response.data : [];
+      
+      if (runs.length === 0) {
+        setReportStats({
+          totalKm: 0,
+          avgPace: "N/A",
+          activeDay: "None (no runs yet)"
+        });
+        return;
+      }
+
+      // Calculate Total Km
+      const totalKm = runs.reduce((sum: number, run: any) => sum + (run.distanceKm ?? 0), 0);
+      
+      // Calculate Average Pace
+      let totalSeconds = 0;
+      let count = 0;
+      runs.forEach((run: any) => {
+        if (!run.pace) return;
+        const match = run.pace.match(/(\d+):(\d+)/);
+        if (match) {
+          const mins = parseInt(match[1], 10);
+          const secs = parseInt(match[2], 10);
+          totalSeconds += mins * 60 + secs;
+          count++;
+        } else {
+          const decimal = parseFloat(run.pace);
+          if (Number.isFinite(decimal) && decimal > 0) {
+            totalSeconds += decimal * 60;
+            count++;
+          }
+        }
+      });
+      
+      let avgPace = "N/A";
+      if (count > 0) {
+        const avgSeconds = totalSeconds / count;
+        const mins = Math.floor(avgSeconds / 60);
+        const secs = Math.round(avgSeconds % 60);
+        avgPace = `${mins}:${secs < 10 ? "0" : ""}${secs} /km`;
+      }
+
+      // Calculate Most Active Day
+      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const counts: Record<string, number> = {};
+      runs.forEach((run: any) => {
+        const date = run.loggedAt || run.createdAt;
+        if (date) {
+          const dayName = days[new Date(date).getDay()];
+          counts[dayName] = (counts[dayName] || 0) + 1;
+        }
+      });
+
+      let activeDay = "None";
+      let maxCount = 0;
+      Object.entries(counts).forEach(([day, countVal]) => {
+        if (countVal > maxCount) {
+          maxCount = countVal;
+          activeDay = day;
+        }
+      });
+
+      if (activeDay === "None" && runs.length > 0) {
+        activeDay = "Monday";
+      }
+
+      setReportStats({
+        totalKm: Math.round(totalKm * 10) / 10,
+        avgPace,
+        activeDay
+      });
+    } catch (err) {
+      console.error("Failed to generate report:", err);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   useEffect(() => {
     if (isAuthenticated && user?.role === "athlete") {
@@ -139,7 +230,7 @@ export default function AppShell() {
             <p className="text-xs font-semibold uppercase text-app-text-soft [letter-spacing:0.16em]">Logged in as</p>
             <h3 className="mt-2 text-lg font-semibold text-app-text">{user?.name ?? "Guest user"}</h3>
             <p className="text-sm text-app-text-soft">{user?.email ?? "guest@athlytic.app"}</p>
-            <Button variant="secondary" className="mt-4 w-full" onClick={() => navigate("/reports")}>
+            <Button variant="secondary" className="mt-4 w-full" onClick={handleOpenReport}>
               Weekly report ready
             </Button>
             <Button
@@ -204,6 +295,69 @@ export default function AppShell() {
           </div>
         </main>
       </div>
+
+      {/* Weekly Performance Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
+          <div className="glass-panel w-full max-w-md border border-app-border/40 bg-app-surface/95 p-6 shadow-soft md:p-8">
+            <div className="mb-6 flex items-center justify-between border-b border-app-border/40 pb-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-app-accent font-semibold">Weekly Report</p>
+                <h3 className="text-2xl font-bold text-app-text mt-1">Weekly Summary</h3>
+              </div>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="rounded-xl border border-app-border bg-app-surface px-3 py-1.5 text-xs font-semibold text-app-text transition hover:border-app-danger"
+              >
+                Close
+              </button>
+            </div>
+
+            {isGeneratingReport ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <span className="animate-spin h-8 w-8 border-4 border-app-primary border-t-transparent rounded-full mb-3"></span>
+                <p className="text-sm text-app-text-soft">Compiling performance database...</p>
+              </div>
+            ) : reportStats ? (
+              <div className="space-y-5">
+                <div className="rounded-2xl border border-app-border/40 bg-app-surface-strong/60 p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-app-text-soft">Total Distance</p>
+                    <p className="mt-1 text-2xl font-bold text-app-primary">{reportStats.totalKm} km</p>
+                  </div>
+                  <span className="text-3xl">🏃‍♂️</span>
+                </div>
+
+                <div className="rounded-2xl border border-app-border/40 bg-app-surface-strong/60 p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-app-text-soft">Average Pace</p>
+                    <p className="mt-1 text-2xl font-bold text-app-accent">{reportStats.avgPace}</p>
+                  </div>
+                  <span className="text-3xl">⚡</span>
+                </div>
+
+                <div className="rounded-2xl border border-app-border/40 bg-app-surface-strong/60 p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-app-text-soft">Most Active Day</p>
+                    <p className="mt-1 text-2xl font-bold text-app-text">{reportStats.activeDay}</p>
+                  </div>
+                  <span className="text-3xl">📅</span>
+                </div>
+
+                <div className="rounded-2xl bg-gradient-to-br from-app-primary/10 to-app-accent/10 border border-app-border/40 p-4">
+                  <p className="text-sm font-semibold text-app-text">Performance Insight</p>
+                  <p className="mt-1.5 text-xs text-app-text-soft leading-5">
+                    {reportStats.totalKm > 0 
+                      ? `Fantastic work this week! Your runs on ${reportStats.activeDay}s are driving your cardiovascular gains. Maintain your pace of ${reportStats.avgPace} as you dial in your training block.`
+                      : "Start logging your running sessions to generate personalized weekly insights and see your metrics compile here!"
+                    }
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

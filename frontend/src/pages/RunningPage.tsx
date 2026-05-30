@@ -53,6 +53,12 @@ function toForm(item: RunningLog): RunningForm {
   };
 }
 
+function calculateSpeed(distanceKm: number, durationMinutes: number): number {
+  if (!durationMinutes || durationMinutes <= 0) return 0;
+  const speed = distanceKm / (durationMinutes / 60);
+  return Number.isFinite(speed) ? parseFloat(speed.toFixed(2)) : 0;
+}
+
 function parsePaceToDecimal(paceStr: string): number {
   if (!paceStr) return 0;
   const match = paceStr.match(/(\d+):(\d+)/);
@@ -68,6 +74,17 @@ function parsePaceToDecimal(paceStr: string): number {
 export default function RunningPage() {
   const { pushToast } = useToast();
   const [form, setForm] = useState<RunningForm>(initialForm);
+
+  const autoCalculatePace = (distanceVal: string, durationVal: string) => {
+    const d = parseFloat(distanceVal);
+    const t = parseFloat(durationVal);
+    if (!d || d <= 0 || !t || t <= 0) return "";
+    
+    const paceDecimal = t / d;
+    const mins = Math.floor(paceDecimal);
+    const secs = Math.round((paceDecimal - mins) * 60);
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
   const [sessions, setSessions] = useState<RunningLog[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletedSession, setDeletedSession] = useState<RunningLog | null>(null);
@@ -185,6 +202,17 @@ export default function RunningPage() {
     }
   }
 
+  // Calculate Best Pace
+  const paces = sessions.map(s => parsePaceToDecimal(s.pace)).filter(p => p > 0);
+  const bestPaceDecimal = paces.length > 0 ? Math.min(...paces) : 0;
+  const bestPaceMins = Math.floor(bestPaceDecimal);
+  const bestPaceSecs = Math.round((bestPaceDecimal - bestPaceMins) * 60);
+  const bestPaceStr = bestPaceDecimal > 0 ? `${bestPaceMins}:${bestPaceSecs < 10 ? '0' : ''}${bestPaceSecs} /km` : "N/A";
+
+  // Calculate Average Speed
+  const speeds = sessions.map(s => calculateSpeed(s.distanceKm, s.durationMinutes)).filter(s => s > 0);
+  const avgSpeed = speeds.length > 0 ? (speeds.reduce((sum, s) => sum + s, 0) / speeds.length).toFixed(1) : "0.0";
+
   // Calculate distance chart data (green/blue styling)
   const distanceChartData = {
     labels: sessions.map((s, i) => {
@@ -223,6 +251,26 @@ export default function RunningPage() {
     ],
   };
 
+  // Calculate speed chart data (blue/cyan styling)
+  const speedChartData = {
+    labels: sessions.map((s, i) => {
+      const date = s.loggedAt || s.createdAt;
+      return date
+        ? new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        : `Run ${i + 1}`;
+    }),
+    datasets: [
+      {
+        label: "Speed (km/h)",
+        data: sessions.map((s) => calculateSpeed(s.distanceKm, s.durationMinutes)),
+        borderColor: "#4c80ff", // Blue/Cyan Line
+        backgroundColor: "rgba(76, 128, 255, 0.16)",
+        tension: 0.35,
+        fill: true,
+      },
+    ],
+  };
+
   return (
     <div className="app-page">
       <PageHeader
@@ -248,6 +296,28 @@ export default function RunningPage() {
         </Card>
       ) : null}
 
+      {/* Summary Stats Bar */}
+      <section className="mb-6 grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-app-border/40 bg-slate-950/40 p-4 text-center backdrop-blur-sm">
+          <p className="text-xs uppercase tracking-wider text-app-text-soft">Total Runs</p>
+          <p className="mt-1 text-2xl font-bold text-app-text">{sessions.length}</p>
+        </div>
+        <div className="rounded-2xl border border-app-border/40 bg-slate-950/40 p-4 text-center backdrop-blur-sm">
+          <p className="text-xs uppercase tracking-wider text-app-text-soft">Total Distance</p>
+          <p className="mt-1 text-2xl font-bold text-app-primary">
+            {sessions.reduce((sum, s) => sum + s.distanceKm, 0).toFixed(1)} km
+          </p>
+        </div>
+        <div className="rounded-2xl border border-app-border/40 bg-slate-950/40 p-4 text-center backdrop-blur-sm">
+          <p className="text-xs uppercase tracking-wider text-app-text-soft">Best Pace</p>
+          <p className="mt-1 text-2xl font-bold text-app-accent">{bestPaceStr}</p>
+        </div>
+        <div className="rounded-2xl border border-app-border/40 bg-slate-950/40 p-4 text-center backdrop-blur-sm">
+          <p className="text-xs uppercase tracking-wider text-app-text-soft">Avg Speed</p>
+          <p className="mt-1 text-2xl font-bold text-app-text">{avgSpeed} km/h</p>
+        </div>
+      </section>
+
       <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
         <Card>
           <p className="field-label">Run capture</p>
@@ -256,19 +326,31 @@ export default function RunningPage() {
             <Input
               placeholder="Distance (km)"
               value={form.distanceKm}
-              onChange={(event) => setForm((current) => ({ ...current, distanceKm: event.target.value }))}
+              onChange={(event) => {
+                const val = event.target.value;
+                setForm((current) => {
+                  const next = { ...current, distanceKm: val };
+                  next.pace = autoCalculatePace(next.distanceKm, next.durationMinutes);
+                  return next;
+                });
+              }}
             />
             <div className="grid grid-cols-2 gap-3">
               <Input
                 placeholder="Duration (minutes)"
                 value={form.durationMinutes}
-                onChange={(event) => setForm((current) => ({ ...current, durationMinutes: event.target.value }))}
+                onChange={(event) => {
+                  const val = event.target.value;
+                  setForm((current) => {
+                    const next = { ...current, durationMinutes: val };
+                    next.pace = autoCalculatePace(next.distanceKm, next.durationMinutes);
+                    return next;
+                  });
+                }}
               />
-              <Input
-                placeholder="Pace (e.g. 5:30 /km)"
-                value={form.pace}
-                onChange={(event) => setForm((current) => ({ ...current, pace: event.target.value }))}
-              />
+              <div className="flex items-center justify-center rounded-2xl border border-app-border bg-app-surface px-4 py-3 text-sm text-app-text-soft">
+                Pace: {form.pace ? `${form.pace} /km` : "--:--"}
+              </div>
             </div>
             <Input
               placeholder="VO2 Max"
@@ -303,7 +385,9 @@ export default function RunningPage() {
                     <div>
                       <p className="text-sm text-app-text-soft">{session.durationMinutes} min session</p>
                       <h4 className="mt-1 text-xl font-semibold text-app-text">{session.distanceKm} km</h4>
-                      <p className="mt-1 text-xs text-app-text-soft">Pace {session.pace} · VO2 Max {session.vo2Max}</p>
+                      <p className="mt-1 text-xs text-app-text-soft">
+                        Pace {session.pace} · Speed {calculateSpeed(session.distanceKm, session.durationMinutes)} km/h · VO2 Max {session.vo2Max}
+                      </p>
                     </div>
                     <div className="flex gap-2">
                       <Button type="button" variant="ghost" onClick={() => handleEdit(session)}>
@@ -322,7 +406,7 @@ export default function RunningPage() {
       </section>
 
       {/* Progress Charts Section */}
-      <section className="mt-6 grid gap-6 md:grid-cols-2">
+      <section className="mt-6 grid gap-6 md:grid-cols-3">
         <BarChartCard
           title="Distance per run"
           subtitle="Distance covered in kilometers for each recorded session."
@@ -333,7 +417,14 @@ export default function RunningPage() {
           title="Pace improvement over time"
           subtitle="Pace trend in minutes per kilometer. Lower is faster."
           data={paceChartData}
+          reverseY={true}
           emptyMessage="No runs logged yet. Log a session to see your pace progression."
+        />
+        <LineChartCard
+          title="Speed over time"
+          subtitle="Average speed trend in km/h for each session."
+          data={speedChartData}
+          emptyMessage="No runs logged yet. Log a session to see your speed progression."
         />
       </section>
     </div>

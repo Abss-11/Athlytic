@@ -17,12 +17,12 @@ export default function BarChartCard({
   const hasData = Array.isArray(data?.datasets) && data.datasets.some((dataset: { data?: unknown[] }) => Array.isArray(dataset.data) && dataset.data.some((val) => Number(val) > 0));
 
   return (
-    <Card className="border-app-border/80">
+    <Card className="border-app-border/40 bg-slate-950/60 backdrop-blur-md">
       <div className="mb-5">
         <h3 className="text-lg font-semibold text-app-text">{title}</h3>
         <p className="mt-1 text-sm text-app-text-soft">{subtitle}</p>
       </div>
-      <div className="h-[280px] rounded-3xl border border-app-border/60 bg-app-surface-soft/70 p-3 shadow-inner">
+      <div className="h-[280px] rounded-3xl border border-app-border/30 bg-slate-950/20 p-3 shadow-inner">
         {hasData ? (
           <Bar
             data={data}
