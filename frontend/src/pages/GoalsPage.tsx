@@ -75,7 +75,7 @@ export default function GoalsPage() {
   }
 
   return (
-    <div>
+    <div className="app-page">
       <PageHeader
         eyebrow="Goal tracking"
         title="Build measurable targets around nutrition, strength, body composition, and training volume."
@@ -85,7 +85,8 @@ export default function GoalsPage() {
 
       <section className="grid gap-6 xl:grid-cols-[0.78fr_1.22fr]">
         <Card>
-          <h3 className="text-xl font-semibold text-app-text">Create a goal</h3>
+          <p className="field-label">Goal builder</p>
+          <h3 className="mt-2 text-2xl font-semibold text-app-text">Create a goal</h3>
           <div className="mt-5 grid gap-4">
             <Input placeholder="Goal name" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} />
             <Input
@@ -101,15 +102,16 @@ export default function GoalsPage() {
         </Card>
 
         <Card>
-          <h3 className="text-xl font-semibold text-app-text">Active goals</h3>
+          <p className="field-label">Scoreboard</p>
+          <h3 className="mt-2 text-2xl font-semibold text-app-text">Active goals</h3>
           <div className="mt-5 grid gap-5">
             {items.length === 0 ? (
-              <div className="rounded-3xl bg-app-surface-strong p-5 text-sm text-app-text-soft">
+              <div className="rounded-3xl border border-dashed border-app-border bg-app-surface-strong/80 p-5 text-sm text-app-text-soft">
                 No goals created yet. Add your first target to begin tracking progress.
               </div>
             ) : (
               items.map((goal) => (
-                <div key={goal.id}>
+                <div key={goal.id} className="surface-tile">
                   <div className="mb-2 flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-app-text">{goal.title}</p>

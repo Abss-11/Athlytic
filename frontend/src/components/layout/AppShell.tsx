@@ -6,16 +6,16 @@ import { useTheme } from "../../context/ThemeContext";
 import Button from "../ui/Button";
 
 const navItems = [
-  { label: "Dashboard", path: "/dashboard" },
-  { label: "Workouts", path: "/workouts" },
-  { label: "Nutrition", path: "/nutrition" },
-  { label: "Running", path: "/running" },
-  { label: "Goals", path: "/goals" },
-  { label: "Community", path: "/community" },
-  { label: "Reports", path: "/reports" },
-  { label: "Integrations", path: "/integrations" },
-  { label: "Biomarkers", path: "/biomarkers" },
-  { label: "Profile", path: "/profile" },
+  { label: "Dashboard", path: "/dashboard", icon: "⌁" },
+  { label: "Workouts", path: "/workouts", icon: "▣" },
+  { label: "Nutrition", path: "/nutrition", icon: "◒" },
+  { label: "Running", path: "/running", icon: "↗" },
+  { label: "Goals", path: "/goals", icon: "◎" },
+  { label: "Community", path: "/community", icon: "✦" },
+  { label: "Reports", path: "/reports", icon: "▤" },
+  { label: "Integrations", path: "/integrations", icon: "◇" },
+  { label: "Biomarkers", path: "/biomarkers", icon: "◌" },
+  { label: "Profile", path: "/profile", icon: "●" },
 ];
 
 export default function AppShell() {
@@ -23,7 +23,7 @@ export default function AppShell() {
   const { user, isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
-  const [notifications, setNotifications] = useState<{id: string, title: string, message: string, type: string}[]>([]);
+  const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; type: string }[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -50,30 +50,36 @@ export default function AppShell() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-app">
       <div className="pointer-events-none absolute inset-0 opacity-70">
-        <div className="absolute -top-24 left-[8%] h-72 w-72 rounded-full bg-app-primary/15 blur-3xl" />
-        <div className="absolute -right-24 top-[22%] h-72 w-72 rounded-full bg-app-accent/20 blur-3xl" />
+        <div className="absolute -top-24 left-[8%] h-72 w-72 rounded-full bg-app-primary/14 blur-3xl" />
+        <div className="absolute -right-24 top-[22%] h-72 w-72 rounded-full bg-app-accent/16 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col px-4 pb-6 pt-4 md:px-6 lg:flex-row lg:gap-6">
-        <aside className="glass-panel mb-4 flex w-full flex-col gap-6 p-5 lg:sticky lg:top-4 lg:mb-0 lg:h-[calc(100vh-2rem)] lg:w-80">
+      <div className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col px-3 pb-4 pt-3 md:px-5 lg:flex-row lg:gap-5 lg:pb-6 lg:pt-5">
+        <aside className="glass-panel mb-4 flex w-full flex-col gap-5 p-4 lg:sticky lg:top-5 lg:mb-0 lg:h-[calc(100vh-2.5rem)] lg:w-80 lg:p-5">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-app-text-soft">Athlytic</p>
-              <h1 className="text-2xl font-bold text-app-text">Performance OS</h1>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-app-primary to-app-accent text-lg font-black text-white shadow-lift">
+                A
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase text-app-text-soft [letter-spacing:0.16em]">Athlytic</p>
+                <h1 className="text-2xl font-bold text-app-text">Performance OS</h1>
+              </div>
             </div>
             <button
               type="button"
               onClick={toggleTheme}
-              className="rounded-2xl border border-app-border bg-app-surface px-3 py-2 text-sm font-semibold text-app-text transition hover:-translate-y-0.5 hover:border-app-primary"
+              className="focus-ring rounded-2xl border border-app-border bg-app-surface px-3 py-2 text-sm font-semibold text-app-text transition hover:-translate-y-0.5 hover:border-app-primary"
+              aria-label="Toggle color theme"
             >
-              {theme === "dark" ? "Light mode" : "Dark mode"}
+              {theme === "dark" ? "☀" : "☾"}
             </button>
           </div>
 
-          <div className="panel-hero p-5 text-white">
+          <div className="panel-hero hidden p-5 text-white sm:block">
             <div className="flex items-start justify-between gap-3">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/70">Current focus</p>
-              <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/80">
+              <p className="text-xs font-semibold uppercase text-white/70 [letter-spacing:0.16em]">Current focus</p>
+              <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase text-white/80 [letter-spacing:0.12em]">
                 Build
               </span>
             </div>
@@ -87,13 +93,13 @@ export default function AppShell() {
             </div>
           </div>
 
-          <nav className="grid gap-2">
+          <nav className="-mx-1 flex gap-2 overflow-x-auto pb-1 lg:mx-0 lg:grid lg:overflow-visible lg:pb-0">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                  `group flex shrink-0 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition lg:w-full ${
                     isActive
                       ? "bg-gradient-to-r from-app-primary to-app-primary-strong text-white shadow-soft"
                       : "text-app-text-soft hover:bg-app-surface-strong hover:text-app-text"
@@ -103,10 +109,12 @@ export default function AppShell() {
                 {({ isActive }) => (
                   <>
                     <span
-                      className={`h-1.5 w-1.5 rounded-full transition ${
-                        isActive ? "bg-app-accent shadow-[0_0_14px_rgba(145,255,110,0.9)]" : "bg-app-border group-hover:bg-app-primary"
+                      className={`grid h-7 w-7 place-items-center rounded-xl text-xs transition ${
+                        isActive ? "bg-white/16 text-app-accent" : "bg-app-surface-strong text-app-text-soft group-hover:text-app-primary"
                       }`}
-                    />
+                    >
+                      {item.icon}
+                    </span>
                     {item.label}
                   </>
                 )}
@@ -115,20 +123,20 @@ export default function AppShell() {
             <NavLink
               to="/coach"
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                `flex shrink-0 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition lg:w-full ${
                   isActive
                     ? "bg-gradient-to-r from-app-accent to-app-accent-strong text-slate-950 shadow-soft"
                     : "text-app-text-soft hover:bg-app-surface-strong hover:text-app-text"
                 }`
               }
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-app-accent shadow-[0_0_10px_rgba(145,255,110,0.7)]" />
+              <span className="grid h-7 w-7 place-items-center rounded-xl bg-app-accent/16 text-app-accent">◈</span>
               Coach Portal
             </NavLink>
           </nav>
 
-          <div className="mt-auto rounded-3xl border border-app-border/70 bg-app-surface-strong/90 p-5">
-            <p className="text-xs uppercase tracking-[0.24em] text-app-text-soft">Logged in as</p>
+          <div className="mt-auto rounded-3xl border border-app-border/70 bg-app-surface-strong/80 p-5">
+            <p className="text-xs font-semibold uppercase text-app-text-soft [letter-spacing:0.16em]">Logged in as</p>
             <h3 className="mt-2 text-lg font-semibold text-app-text">{user?.name ?? "Guest user"}</h3>
             <p className="text-sm text-app-text-soft">{user?.email ?? "guest@athlytic.app"}</p>
             <Button variant="secondary" className="mt-4 w-full" onClick={() => navigate("/reports")}>
@@ -148,36 +156,36 @@ export default function AppShell() {
         </aside>
 
         <main className="flex-1">
-          <div className="glass-panel min-h-[calc(100vh-2rem)] overflow-hidden flex flex-col">
-            <div className="relative z-50 border-b border-app-border/80 bg-app-surface/55 px-5 py-4 backdrop-blur md:px-8">
+          <div className="glass-panel flex min-h-[calc(100vh-2rem)] flex-col overflow-hidden">
+            <div className="relative z-50 border-b border-app-border/80 bg-app-surface/58 px-5 py-4 backdrop-blur md:px-8">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-sm text-app-text-soft">Athlete intelligence platform</p>
-                  <h2 className="text-2xl font-bold text-app-text">Train smarter. Recover faster. Coach better.</h2>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <h2 className="text-2xl font-bold text-app-text">Train smarter. Recover faster. Coach with context.</h2>
+                  <div className="mt-3 flex flex-wrap gap-2">
                     <span className="metric-chip">Live data</span>
                     <span className="metric-chip">Daily reset</span>
                     <span className="metric-chip">Coach-ready</span>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-3 items-center" ref={notifRef}>
+                <div className="flex flex-wrap items-center gap-3" ref={notifRef}>
                   <div className="relative">
                     <Button variant="ghost" onClick={() => setShowNotifications(!showNotifications)} className="relative">
-                      Notifications
-                      {notifications.filter(n => n.type !== 'success').length > 0 && (
-                        <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-app-danger opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-app-danger"></span>
+                      Alerts
+                      {notifications.filter((n) => n.type !== "success").length > 0 && (
+                        <span className="absolute right-1 top-1 flex h-2.5 w-2.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-app-danger opacity-75" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-app-danger" />
                         </span>
                       )}
                     </Button>
                     {showNotifications && (
-                      <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-app-border bg-app-surface-strong p-4 shadow-xl z-50 max-h-96 overflow-y-auto">
-                        <h3 className="text-sm font-bold text-app-text mb-3">Alerts & Insights</h3>
+                      <div className="absolute right-0 top-full z-50 mt-2 max-h-96 w-80 overflow-y-auto rounded-3xl border border-app-border bg-app-surface/95 p-4 shadow-lift backdrop-blur-xl">
+                        <h3 className="mb-3 text-sm font-bold text-app-text">Alerts & Insights</h3>
                         <div className="flex flex-col gap-2">
-                          {notifications.map(n => (
-                            <div key={n.id} className={`p-3 rounded-xl border ${n.type === 'warning' ? 'bg-app-danger/10 border-app-danger/20' : n.type === 'success' ? 'bg-app-primary/10 border-app-primary/20' : 'bg-app-surface border-app-border'}`}>
-                              <p className={`font-semibold text-sm ${n.type === 'warning' ? 'text-app-danger' : n.type === 'success' ? 'text-app-primary' : 'text-app-text'}`}>{n.title}</p>
+                          {notifications.map((n) => (
+                            <div key={n.id} className={`rounded-2xl border p-3 ${n.type === "warning" ? "border-app-danger/20 bg-app-danger/10" : n.type === "success" ? "border-app-success/20 bg-app-success/10" : "border-app-border bg-app-surface"}`}>
+                              <p className={`text-sm font-semibold ${n.type === "warning" ? "text-app-danger" : n.type === "success" ? "text-app-success" : "text-app-text"}`}>{n.title}</p>
                               <p className="text-xs mt-1 text-app-text-soft">{n.message}</p>
                             </div>
                           ))}
@@ -186,7 +194,7 @@ export default function AppShell() {
                       </div>
                     )}
                   </div>
-                  <Button>Sync today&apos;s metrics</Button>
+                  <Button>Sync metrics</Button>
                 </div>
               </div>
             </div>

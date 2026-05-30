@@ -66,31 +66,47 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-app px-4 py-8">
-      <Card className="w-full max-w-md p-8">
-        <p className="text-sm uppercase tracking-[0.24em] text-app-text-soft">Welcome back</p>
-        <h1 className="mt-3 text-4xl font-bold text-app-text">Log into Athlytic</h1>
-        <p className="mt-3 text-sm leading-7 text-app-text-soft">
-          Secure JWT-based authentication flow for athletes and coaches.
-        </p>
-        <p className="mt-2 text-sm text-app-text-soft">
-          Demo credentials switch with role: athlete uses `demo@athlytic.app`, coach uses `coach@athlytic.app`.
-        </p>
+    <div className="grid min-h-screen bg-app px-4 py-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-6">
+      <section className="panel-hero hidden min-h-[calc(100vh-3rem)] p-10 text-white lg:flex lg:flex-col lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase text-white/62 [letter-spacing:0.16em]">Athlytic access</p>
+          <h1 className="mt-4 max-w-2xl text-6xl font-bold leading-[1.02]">Return to your performance workspace.</h1>
+          <p className="mt-5 max-w-xl text-base leading-8 text-white/72">
+            Jump back into training load, macros, sleep, running trends, and coach feedback without losing the day&apos;s context.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {["Readiness", "Fueling", "Training"].map((item) => (
+            <div key={item} className="rounded-3xl border border-white/16 bg-white/10 p-4 backdrop-blur">
+              <p className="text-sm text-white/62">{item}</p>
+              <p className="mt-2 text-2xl font-bold">Live</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-        <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
-          <Input type="email" placeholder="Email address" value={email} onChange={(event) => setEmail(event.target.value)} />
-          <Input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          <div className="grid grid-cols-2 gap-3">
+      <section className="flex items-center justify-center py-6 lg:py-0">
+        <Card className="w-full max-w-md p-8">
+          <p className="field-label">Welcome back</p>
+          <h2 className="mt-3 text-4xl font-bold text-app-text">Log into Athlytic</h2>
+          <p className="mt-3 text-sm leading-7 text-app-text-soft">
+            Choose an athlete or coach workspace. Demo credentials update automatically when you switch roles.
+          </p>
+
+          <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+            <Input type="email" placeholder="Email address" value={email} onChange={(event) => setEmail(event.target.value)} />
+            <Input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <div className="grid grid-cols-2 gap-3 rounded-3xl bg-app-surface-strong/70 p-1.5">
             <button
               type="button"
               onClick={() => setRole("athlete")}
-              className={`rounded-2xl px-4 py-3 text-sm font-semibold ${
-                role === "athlete" ? "bg-app-primary text-white" : "bg-app-surface-strong text-app-text"
+              className={`focus-ring rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                role === "athlete" ? "bg-app-primary text-white shadow-lift" : "text-app-text-soft hover:text-app-text"
               }`}
             >
               Athlete
@@ -98,8 +114,8 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setRole("coach")}
-              className={`rounded-2xl px-4 py-3 text-sm font-semibold ${
-                role === "coach" ? "bg-app-accent text-slate-950" : "bg-app-surface-strong text-app-text"
+              className={`focus-ring rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                role === "coach" ? "bg-app-accent text-slate-950 shadow-lift" : "text-app-text-soft hover:text-app-text"
               }`}
             >
               Coach
@@ -109,15 +125,16 @@ export default function LoginPage() {
           <Button className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Logging in..." : "Log in"}
           </Button>
-        </form>
+          </form>
 
-        <p className="mt-6 text-sm text-app-text-soft">
-          New to Athlytic?{" "}
-          <Link to="/signup" className="font-semibold text-app-primary">
-            Create an account
-          </Link>
-        </p>
-      </Card>
+          <p className="mt-6 text-sm text-app-text-soft">
+            New to Athlytic?{" "}
+            <Link to="/signup" className="font-semibold text-app-primary">
+              Create an account
+            </Link>
+          </p>
+        </Card>
+      </section>
     </div>
   );
 }

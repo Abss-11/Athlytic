@@ -216,7 +216,7 @@ export default function NutritionPage() {
   }
 
   return (
-    <div>
+    <div className="app-page">
       <PageHeader
         eyebrow="Nutrition tracker"
         title="Log meals, monitor macros, and keep your fueling aligned with performance."
@@ -239,7 +239,8 @@ export default function NutritionPage() {
 
       <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <Card>
-          <h3 className="text-xl font-semibold text-app-text">{editingId ? "Edit meal" : "Log a meal"}</h3>
+          <p className="field-label">Fueling action</p>
+          <h3 className="mt-2 text-2xl font-semibold text-app-text">{editingId ? "Edit meal" : "Log a meal"}</h3>
           <div className="mt-5 grid gap-4">
             <Input
               placeholder="Meal name"
@@ -282,7 +283,12 @@ export default function NutritionPage() {
         </Card>
 
         <Card>
-          <h3 className="text-xl font-semibold text-app-text">Macro progress</h3>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="field-label">Today vs yesterday</p>
+              <h3 className="mt-2 text-2xl font-semibold text-app-text">Macro progress</h3>
+            </div>
+          </div>
           <div className="mt-5 grid gap-5">
             {entries.map((macro) => {
               const value = macro.target > 0 ? (macro.consumed / macro.target) * 100 : 0;
@@ -318,12 +324,12 @@ export default function NutritionPage() {
           <h3 className="text-xl font-semibold text-app-text">Today&apos;s nutrition log</h3>
           <div className="mt-5 grid gap-3">
             {nutritionLogs.length === 0 ? (
-              <div className="rounded-3xl bg-app-surface-strong p-5 text-sm text-app-text-soft">
+              <div className="rounded-3xl border border-dashed border-app-border bg-app-surface-strong/80 p-5 text-sm text-app-text-soft">
                 No nutrition entries yet. Add your first meal above.
               </div>
             ) : (
               nutritionLogs.map((entry) => (
-                <div key={entry.id} className="rounded-3xl bg-app-surface-strong p-5">
+                <div key={entry.id} className="surface-tile rounded-3xl p-5">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
                       <h4 className="text-lg font-semibold text-app-text">{entry.mealName}</h4>
@@ -349,10 +355,11 @@ export default function NutritionPage() {
 
       <section className="mt-6 grid gap-6 xl:grid-cols-2">
         <Card>
-          <h3 className="text-xl font-semibold text-app-text">AI nutrition guidance</h3>
+          <p className="field-label">Assistant</p>
+          <h3 className="mt-2 text-xl font-semibold text-app-text">AI nutrition guidance</h3>
           <div className="mt-5 grid gap-3">
             {aiAdvice.length === 0 ? (
-              <p className="rounded-2xl bg-app-surface-strong p-4 text-sm text-app-text-soft">
+              <p className="rounded-2xl border border-dashed border-app-border bg-app-surface-strong/80 p-4 text-sm text-app-text-soft">
                 Add profile metrics to unlock personalized nutrition guidance.
               </p>
             ) : (
@@ -366,10 +373,11 @@ export default function NutritionPage() {
         </Card>
 
         <Card>
-          <h3 className="text-xl font-semibold text-app-text">Suggested diet plan</h3>
+          <p className="field-label">Plan builder</p>
+          <h3 className="mt-2 text-xl font-semibold text-app-text">Suggested diet plan</h3>
           <div className="mt-5 grid gap-3">
             {dietSuggestions.length === 0 ? (
-              <p className="rounded-2xl bg-app-surface-strong p-4 text-sm text-app-text-soft">
+              <p className="rounded-2xl border border-dashed border-app-border bg-app-surface-strong/80 p-4 text-sm text-app-text-soft">
                 Diet suggestions will appear after profile personalization.
               </p>
             ) : (

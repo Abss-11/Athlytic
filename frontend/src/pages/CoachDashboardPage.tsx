@@ -67,7 +67,7 @@ export default function CoachDashboardPage() {
   };
 
   return (
-    <div>
+    <div className="app-page">
       <PageHeader
         eyebrow="Coach portal"
         title="A high-level view of athlete readiness, compliance, and progression."
@@ -79,7 +79,8 @@ export default function CoachDashboardPage() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-semibold text-app-text">Athlete overview</h3>
+              <p className="field-label">Team floor</p>
+              <h3 className="mt-2 text-2xl font-semibold text-app-text">Athlete overview</h3>
               <p className="mt-1 text-sm text-app-text-soft">Performance score, training direction, and next action.</p>
             </div>
             <Button>Assign training block</Button>
@@ -87,12 +88,12 @@ export default function CoachDashboardPage() {
 
           <div className="mt-6 grid gap-4">
             {athletes.length === 0 ? (
-              <div className="rounded-3xl bg-app-surface-strong p-5 text-sm text-app-text-soft">
+              <div className="rounded-3xl border border-dashed border-app-border bg-app-surface-strong/80 p-5 text-sm text-app-text-soft">
                 No athletes are connected yet. Invite athletes or create coach-linked accounts to populate this view.
               </div>
             ) : (
               athletes.map((athlete) => (
-                <div key={athlete.id} className="rounded-2xl border border-app-border bg-app-surface-strong p-4 transition">
+                <div key={athlete.id} className="surface-tile">
                   <div 
                     className="flex cursor-pointer items-center justify-between"
                     onClick={() => setExpandedAthleteId(prev => prev === athlete.id ? null : athlete.id)}
@@ -110,7 +111,7 @@ export default function CoachDashboardPage() {
                     <div className="mt-4 pt-4 border-t border-app-border">
                       <label className="text-sm font-medium text-app-text-soft">Coach Notes & Medical Directives</label>
                       <textarea
-                        className="w-full mt-2 rounded-xl border border-app-border bg-app-surface px-4 py-3 text-sm text-app-text outline-none transition placeholder:text-app-text-soft focus:border-app-primary focus:ring-4 focus:ring-app-primary/15"
+                        className="focus-ring mt-2 w-full rounded-2xl border border-app-border bg-app-surface px-4 py-3 text-sm text-app-text outline-none transition placeholder:text-app-text-soft focus:border-app-primary"
                         rows={4}
                         placeholder="Enter active directives, fatigue warnings, or injury notes..."
                         value={editingNotes[athlete.id] || ""}
@@ -129,7 +130,8 @@ export default function CoachDashboardPage() {
 
         <div className="grid gap-6">
           <Card>
-            <h3 className="text-xl font-semibold text-app-text">Coach actions</h3>
+            <p className="field-label">Attention queue</p>
+            <h3 className="mt-2 text-xl font-semibold text-app-text">Coach actions</h3>
             <div className="mt-4 grid gap-3">
               {summary.notes.length === 0 ? (
                 <div className="rounded-2xl border border-app-border bg-app-surface-strong p-4 text-sm text-app-text-soft">
@@ -137,7 +139,7 @@ export default function CoachDashboardPage() {
                 </div>
               ) : (
                 summary.notes.map((task) => (
-                  <div key={task} className="rounded-2xl border border-app-border bg-app-surface-strong p-4 text-sm text-app-text">
+                  <div key={task} className="surface-tile text-sm text-app-text">
                     {task}
                   </div>
                 ))
@@ -146,7 +148,8 @@ export default function CoachDashboardPage() {
           </Card>
 
           <Card>
-            <h3 className="text-xl font-semibold text-app-text">Comparison view</h3>
+            <p className="field-label">Roster health</p>
+            <h3 className="mt-2 text-xl font-semibold text-app-text">Comparison view</h3>
             <div className="mt-4 space-y-4">
               {[
                 { label: "Monitored athletes", value: Math.min(100, summary.monitoredAthletes * 20) },

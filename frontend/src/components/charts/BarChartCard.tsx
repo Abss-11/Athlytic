@@ -1,4 +1,5 @@
 import "../../lib/chartSetup";
+import type { ChartData } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import Card from "../ui/Card";
 
@@ -10,7 +11,7 @@ export default function BarChartCard({
 }: {
   title: string;
   subtitle: string;
-  data: any;
+  data: ChartData<"bar">;
   emptyMessage?: string;
 }) {
   const hasData = Array.isArray(data?.datasets) && data.datasets.some((dataset: { data?: unknown[] }) => Array.isArray(dataset.data) && dataset.data.some((val) => Number(val) > 0));
@@ -21,7 +22,7 @@ export default function BarChartCard({
         <h3 className="text-lg font-semibold text-app-text">{title}</h3>
         <p className="mt-1 text-sm text-app-text-soft">{subtitle}</p>
       </div>
-      <div className="h-[260px] rounded-3xl border border-app-border/60 bg-app-surface-soft/60 p-3">
+      <div className="h-[280px] rounded-3xl border border-app-border/60 bg-app-surface-soft/70 p-3 shadow-inner">
         {hasData ? (
           <Bar
             data={data}
@@ -32,6 +33,17 @@ export default function BarChartCard({
                 legend: {
                   labels: { color: "rgb(var(--text-soft))" },
                 },
+                tooltip: {
+                  backgroundColor: "rgb(var(--surface))",
+                  titleColor: "rgb(var(--text))",
+                  bodyColor: "rgb(var(--text-soft))",
+                  borderColor: "rgb(var(--border))",
+                  borderWidth: 1,
+                  padding: 12,
+                },
+              },
+              elements: {
+                bar: { borderRadius: 12, borderSkipped: false },
               },
               scales: {
                 x: {
@@ -46,8 +58,14 @@ export default function BarChartCard({
             }}
           />
         ) : (
-          <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-strong px-6 text-center text-sm leading-6 text-app-text-soft">
-            {emptyMessage}
+          <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-strong/80 px-6 text-center">
+            <div className="mb-4 grid h-16 w-32 grid-cols-4 items-end gap-2">
+              <span className="skeleton h-7" />
+              <span className="skeleton h-12" />
+              <span className="skeleton h-9" />
+              <span className="skeleton h-14" />
+            </div>
+            <p className="max-w-sm text-sm leading-6 text-app-text-soft">{emptyMessage}</p>
           </div>
         )}
       </div>

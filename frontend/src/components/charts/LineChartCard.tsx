@@ -1,4 +1,5 @@
 import "../../lib/chartSetup";
+import type { ChartData } from "chart.js";
 import { Line } from "react-chartjs-2";
 import Card from "../ui/Card";
 
@@ -10,7 +11,7 @@ export default function LineChartCard({
 }: {
   title: string;
   subtitle: string;
-  data: any;
+  data: ChartData<"line">;
   emptyMessage?: string;
 }) {
   const hasData = Array.isArray(data?.datasets) && data.datasets.some((dataset: { data?: unknown[] }) => Array.isArray(dataset.data) && dataset.data.some((val) => Number(val) > 0));
@@ -21,7 +22,7 @@ export default function LineChartCard({
         <h3 className="text-lg font-semibold text-app-text">{title}</h3>
         <p className="mt-1 text-sm text-app-text-soft">{subtitle}</p>
       </div>
-      <div className="h-[260px] rounded-3xl border border-app-border/60 bg-app-surface-soft/60 p-3">
+      <div className="h-[280px] rounded-3xl border border-app-border/60 bg-app-surface-soft/70 p-3 shadow-inner">
         {hasData ? (
           <Line
             data={data}
@@ -32,6 +33,18 @@ export default function LineChartCard({
                 legend: {
                   display: false,
                 },
+                tooltip: {
+                  backgroundColor: "rgb(var(--surface))",
+                  titleColor: "rgb(var(--text))",
+                  bodyColor: "rgb(var(--text-soft))",
+                  borderColor: "rgb(var(--border))",
+                  borderWidth: 1,
+                  padding: 12,
+                },
+              },
+              elements: {
+                line: { borderWidth: 3, tension: 0.38 },
+                point: { radius: 3, hoverRadius: 6 },
               },
               scales: {
                 x: {
@@ -46,8 +59,9 @@ export default function LineChartCard({
             }}
           />
         ) : (
-          <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-strong px-6 text-center text-sm leading-6 text-app-text-soft">
-            {emptyMessage}
+          <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-strong/80 px-6 text-center">
+            <div className="mb-4 h-16 w-32 skeleton" />
+            <p className="max-w-sm text-sm leading-6 text-app-text-soft">{emptyMessage}</p>
           </div>
         )}
       </div>

@@ -150,23 +150,39 @@ export default function OnboardingPage() {
   const progressPercent = Math.round((step / 3) * 100);
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
-      <Card>
-        <p className="text-sm uppercase tracking-[0.24em] text-app-text-soft">Athlete onboarding</p>
-        <h1 className="mt-3 text-3xl font-bold text-app-text">Set up your performance profile</h1>
-        <p className="mt-3 text-sm text-app-text-soft">
-          We use this to personalize your daily macros, hydration, sleep, and running targets.
-        </p>
+    <div className="app-page mx-auto w-full max-w-5xl">
+      <Card className="p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+          <div>
+            <p className="field-label">Athlete onboarding</p>
+            <h1 className="mt-3 text-4xl font-bold leading-tight text-app-text">Set up your performance profile</h1>
+            <p className="mt-3 text-sm leading-7 text-app-text-soft">
+              Personal targets start with a few body metrics, training context, and health notes.
+            </p>
+            <div className="mt-6 grid gap-3">
+              {["Body metrics", "Training intent", "Health context"].map((label, index) => (
+                <div key={label} className={`surface-tile ${step === index + 1 ? "border-app-primary bg-app-primary/8" : ""}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-8 w-8 place-items-center rounded-xl bg-app-primary text-sm font-bold text-white">
+                      {index + 1}
+                    </span>
+                    <p className="font-semibold text-app-text">{label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        <div className="mt-5 rounded-2xl bg-app-surface-strong p-4">
+          <div>
+        <div className="rounded-3xl bg-app-surface-strong/70 p-4">
           <div className="mb-2 flex items-center justify-between text-sm text-app-text-soft">
             <span>
               Step {step} of 3
             </span>
             <span>{progressPercent}%</span>
           </div>
-          <div className="h-2 rounded-full bg-app-surface">
-            <div className="h-2 rounded-full bg-app-primary transition-all" style={{ width: `${progressPercent}%` }} />
+          <div className="h-2.5 rounded-full bg-app-surface">
+            <div className="h-2.5 rounded-full bg-gradient-to-r from-app-primary to-app-accent transition-all duration-700" style={{ width: `${progressPercent}%` }} />
           </div>
         </div>
 
@@ -295,6 +311,8 @@ export default function OnboardingPage() {
             </div>
           </form>
         ) : null}
+          </div>
+        </div>
       </Card>
     </div>
   );

@@ -613,7 +613,7 @@ export default function WorkoutPage() {
   }, 0);
 
   return (
-    <div>
+    <div className="app-page">
       <PageHeader
         eyebrow="Workout tracker"
         title="Track each set, then analyze average set weight by session and muscle group."
@@ -636,7 +636,8 @@ export default function WorkoutPage() {
 
       <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <Card>
-          <h3 className="text-xl font-semibold text-app-text">{editingId ? "Edit session" : "Create session"}</h3>
+          <p className="field-label">Session builder</p>
+          <h3 className="mt-2 text-2xl font-semibold text-app-text">{editingId ? "Edit session" : "Create session"}</h3>
           <div className="mt-5 grid gap-4">
             <Input
               placeholder="Session title (e.g. Upper Body Strength)"
@@ -666,7 +667,7 @@ export default function WorkoutPage() {
               </select>
             </div>
 
-            <div className="rounded-2xl border border-app-border/70 bg-app-surface-strong/35 p-4">
+            <div className="rounded-3xl border border-app-border/70 bg-app-surface-strong/45 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-sm font-semibold text-app-text">Exercises</p>
                 <Button type="button" variant="ghost" onClick={handleAddExercise}>
@@ -676,7 +677,7 @@ export default function WorkoutPage() {
 
               <div className="grid gap-3">
                 {form.exercises.map((exercise, index) => (
-                  <div key={exercise.id} className="rounded-2xl border border-app-border/60 bg-app-surface/55 p-3">
+                  <div key={exercise.id} className="rounded-3xl border border-app-border/60 bg-app-surface/62 p-3">
                     <div className="mb-3 flex items-center justify-between">
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-app-text-soft">
                         Exercise {index + 1}
@@ -717,7 +718,7 @@ export default function WorkoutPage() {
                       />
                     </div>
 
-                    <div className="mt-4 rounded-2xl border border-app-border/60 bg-app-surface/55 p-3">
+                    <div className="mt-4 rounded-3xl border border-app-border/60 bg-app-surface/55 p-3">
                       <div className="mb-2 flex items-center justify-between">
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-app-text-soft">Set logs</p>
                         <Button type="button" variant="ghost" onClick={() => handleAddSet(exercise.id)}>
@@ -726,7 +727,7 @@ export default function WorkoutPage() {
                       </div>
                       <div className="grid gap-2">
                         {exercise.setLogs.map((setLog, setIndex) => (
-                          <div key={setLog.id} className="grid gap-2 rounded-xl bg-app-surface-strong p-2 sm:grid-cols-[0.8fr_1fr_1fr_auto] sm:items-center">
+                          <div key={setLog.id} className="grid gap-2 rounded-2xl bg-app-surface-strong/85 p-2 sm:grid-cols-[0.8fr_1fr_1fr_auto] sm:items-center">
                             <p className="text-xs font-semibold text-app-text-soft">Set {setIndex + 1}</p>
                             <Input
                               type="number"
@@ -770,34 +771,35 @@ export default function WorkoutPage() {
         </Card>
 
         <Card>
-          <h3 className="text-xl font-semibold text-app-text">Workout analytics</h3>
+          <p className="field-label">Training intelligence</p>
+          <h3 className="mt-2 text-2xl font-semibold text-app-text">Workout analytics</h3>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl bg-app-surface-strong p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-app-text-soft">Today sessions</p>
+            <div className="surface-tile">
+              <p className="field-label">Today sessions</p>
               <p className="mt-2 text-2xl font-bold text-app-text">{summary.today.sessions}</p>
               <p className="mt-1 text-xs text-app-text-soft">{summary.deltas.sessions}</p>
             </div>
-            <div className="rounded-2xl bg-app-surface-strong p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-app-text-soft">Today avg set weight</p>
+            <div className="surface-tile">
+              <p className="field-label">Today avg set weight</p>
               <p className="mt-2 text-2xl font-bold text-app-text">{summary.today.avgSetWeightKg} kg/set</p>
               <p className="mt-1 text-xs text-app-text-soft">{summary.deltas.avgSetWeightKg}</p>
             </div>
-            <div className="rounded-2xl bg-app-surface-strong p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-app-text-soft">This week sets</p>
+            <div className="surface-tile">
+              <p className="field-label">This week sets</p>
               <p className="mt-2 text-2xl font-bold text-app-text">{summary.thisWeek.sets}</p>
               <p className="mt-1 text-xs text-app-text-soft">Across {summary.thisWeek.exercises} exercises</p>
             </div>
-            <div className="rounded-2xl bg-app-surface-strong p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-app-text-soft">This week duration</p>
+            <div className="surface-tile">
+              <p className="field-label">This week duration</p>
               <p className="mt-2 text-2xl font-bold text-app-text">{summary.thisWeek.durationMinutes} min</p>
               <p className="mt-1 text-xs text-app-text-soft">{summary.deltas.duration}</p>
             </div>
           </div>
 
-          <div className="mt-6 rounded-2xl bg-app-surface-strong p-4">
+          <div className="mt-6 rounded-3xl border border-app-border/55 bg-app-surface-strong/70 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-app-text-soft">Muscle-group analytics</p>
+                <p className="field-label">Muscle-group analytics</p>
                 <p className="mt-1 text-sm text-app-text-soft">
                   This week: {summary.muscleGroups.totalSets} sets · {summary.muscleGroups.avgSetWeightKg} kg/set avg
                 </p>
@@ -805,7 +807,7 @@ export default function WorkoutPage() {
             </div>
             <div className="mt-4 grid gap-4">
               {summary.muscleGroups.thisWeek.length === 0 ? (
-                <div className="rounded-2xl bg-app-surface p-4 text-sm text-app-text-soft">
+                <div className="rounded-2xl border border-dashed border-app-border bg-app-surface p-4 text-sm text-app-text-soft">
                   No muscle-group data yet. Log your first session to see weekly distribution.
                 </div>
               ) : (
@@ -842,7 +844,10 @@ export default function WorkoutPage() {
       <section className="mt-6">
         <Card>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h3 className="text-xl font-semibold text-app-text">Recent sessions</h3>
+            <div>
+              <p className="field-label">Session history</p>
+              <h3 className="mt-2 text-xl font-semibold text-app-text">Recent sessions</h3>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Input
                 placeholder="Search session or exercise"
@@ -866,7 +871,7 @@ export default function WorkoutPage() {
 
           <div className="mt-5 grid gap-4">
             {filteredItems.length === 0 ? (
-              <div className="rounded-3xl bg-app-surface-strong p-5 text-sm text-app-text-soft">
+              <div className="rounded-3xl border border-dashed border-app-border bg-app-surface-strong/80 p-5 text-sm text-app-text-soft">
                 No workouts match your filters yet.
               </div>
             ) : (
@@ -875,7 +880,7 @@ export default function WorkoutPage() {
                 const sessionAverageSetWeight = getSessionAverageSetWeightKg(workout);
                 const loggedDate = workout.loggedAt || workout.createdAt;
                 return (
-                  <div key={workout.id} className="rounded-3xl bg-app-surface-strong p-5">
+                  <div key={workout.id} className="surface-tile rounded-3xl p-5">
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">

@@ -7,6 +7,8 @@ import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
 import { useToast } from "../context/ToastContext";
 import { extractApiErrorMessage, isPositiveNumber } from "../lib/validation";
+import BarChartCard from "../components/charts/BarChartCard";
+import LineChartCard from "../components/charts/LineChartCard";
 
 type RunningLog = {
   id: string;
@@ -15,6 +17,8 @@ type RunningLog = {
   pace: string;
   vo2Max: number;
   personalRecord: boolean;
+  createdAt?: string;
+  loggedAt?: string;
 };
 
 type RunningForm = {
@@ -49,6 +53,18 @@ function toForm(item: RunningLog): RunningForm {
   };
 }
 
+function parsePaceToDecimal(paceStr: string): number {
+  if (!paceStr) return 0;
+  const match = paceStr.match(/(\d+):(\d+)/);
+  if (match) {
+    const mins = parseInt(match[1], 10);
+    const secs = parseInt(match[2], 10);
+    return mins + secs / 60;
+  }
+  const num = parseFloat(paceStr);
+  return Number.isFinite(num) ? num : 0;
+}
+
 export default function RunningPage() {
   const { pushToast } = useToast();
   const [form, setForm] = useState<RunningForm>(initialForm);
@@ -62,13 +78,15 @@ export default function RunningPage() {
     const response = await runningApi.list();
     const rows = Array.isArray(response.data) ? response.data : [];
     setSessions(
-      rows.map((entry: RunningLog) => ({
+      rows.map((entry: any) => ({
         id: entry.id,
         distanceKm: entry.distanceKm ?? 0,
         durationMinutes: entry.durationMinutes ?? 0,
         pace: entry.pace ?? "",
         vo2Max: entry.vo2Max ?? 0,
         personalRecord: Boolean(entry.personalRecord),
+        createdAt: entry.createdAt,
+        loggedAt: entry.loggedAt,
       }))
     );
   }, []);
@@ -167,8 +185,46 @@ export default function RunningPage() {
     }
   }
 
+  // Calculate distance chart data (green/blue styling)
+  const distanceChartData = {
+    labels: sessions.map((s, i) => {
+      const date = s.loggedAt || s.createdAt;
+      return date
+        ? new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        : `Run ${i + 1}`;
+    }),
+    datasets: [
+      {
+        label: "Distance (km)",
+        data: sessions.map((s) => s.distanceKm),
+        backgroundColor: "#4c80ff", // Blue Accent
+        borderRadius: 8,
+      },
+    ],
+  };
+
+  // Calculate pace chart data (green/blue styling)
+  const paceChartData = {
+    labels: sessions.map((s, i) => {
+      const date = s.loggedAt || s.createdAt;
+      return date
+        ? new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        : `Run ${i + 1}`;
+    }),
+    datasets: [
+      {
+        label: "Pace (min/km)",
+        data: sessions.map((s) => parsePaceToDecimal(s.pace)),
+        borderColor: "#7dff52", // Green Accent
+        backgroundColor: "rgba(125, 255, 82, 0.16)",
+        tension: 0.35,
+        fill: true,
+      },
+    ],
+  };
+
   return (
-    <div>
+    <div className="app-page">
       <PageHeader
         eyebrow="Running tracker"
         title="Track pace, distance, duration, VO2 Max, and personal records over time."
@@ -194,7 +250,8 @@ export default function RunningPage() {
 
       <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
         <Card>
-          <h3 className="text-xl font-semibold text-app-text">{editingId ? "Edit run" : "Log a run"}</h3>
+          <p className="field-label">Run capture</p>
+          <h3 className="mt-2 text-2xl font-semibold text-app-text">{editingId ? "Edit run" : "Log a run"}</h3>
           <div className="mt-5 grid gap-4">
             <Input
               placeholder="Distance (km)"
@@ -232,15 +289,16 @@ export default function RunningPage() {
         </Card>
 
         <Card>
-          <h3 className="text-xl font-semibold text-app-text">Running history</h3>
+          <p className="field-label">Progression</p>
+          <h3 className="mt-2 text-2xl font-semibold text-app-text">Running history</h3>
           <div className="mt-5 grid gap-4">
             {sessions.length === 0 ? (
-              <div className="rounded-3xl bg-app-surface-strong p-5 text-sm text-app-text-soft">
+              <div className="rounded-3xl border border-dashed border-app-border bg-app-surface-strong/80 p-5 text-sm text-app-text-soft">
                 No runs logged yet. Start with your first session to build your performance history.
               </div>
             ) : (
               sessions.map((session) => (
-                <div key={session.id} className="rounded-3xl bg-app-surface-strong p-5">
+                <div key={session.id} className="surface-tile rounded-3xl p-5">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
                       <p className="text-sm text-app-text-soft">{session.durationMinutes} min session</p>
@@ -261,6 +319,22 @@ export default function RunningPage() {
             )}
           </div>
         </Card>
+      </section>
+
+      {/* Progress Charts Section */}
+      <section className="mt-6 grid gap-6 md:grid-cols-2">
+        <BarChartCard
+          title="Distance per run"
+          subtitle="Distance covered in kilometers for each recorded session."
+          data={distanceChartData}
+          emptyMessage="No runs logged yet. Log a session to see your distance chart."
+        />
+        <LineChartCard
+          title="Pace improvement over time"
+          subtitle="Pace trend in minutes per kilometer. Lower is faster."
+          data={paceChartData}
+          emptyMessage="No runs logged yet. Log a session to see your pace progression."
+        />
       </section>
     </div>
   );

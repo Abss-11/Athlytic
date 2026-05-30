@@ -186,7 +186,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div>
+    <div className="app-page">
       <PageHeader
         eyebrow="Profile + health metrics"
         title="Build your athlete profile and get personalized macros, recovery targets, and diet guidance."
@@ -196,7 +196,8 @@ export default function ProfilePage() {
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
-          <h3 className="text-xl font-semibold text-app-text">Athlete profile inputs</h3>
+          <p className="field-label">Identity and physiology</p>
+          <h3 className="mt-2 text-2xl font-semibold text-app-text">Athlete profile inputs</h3>
           <div className="mt-5 grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
@@ -331,14 +332,15 @@ export default function ProfilePage() {
 
         <div className="grid gap-6">
           <Card>
-            <h3 className="text-xl font-semibold text-app-text">Personalized daily targets</h3>
+            <p className="field-label">Generated plan</p>
+            <h3 className="mt-2 text-xl font-semibold text-app-text">Personalized daily targets</h3>
             {isLoading ? (
               <p className="mt-4 text-sm text-app-text-soft">Loading profile targets...</p>
             ) : (
               <>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   {targetCards.map((item) => (
-                    <div key={item.label} className="rounded-2xl bg-app-surface-strong p-4">
+                    <div key={item.label} className="surface-tile">
                       <p className="text-sm text-app-text-soft">{item.label}</p>
                       <p className="mt-2 text-lg font-semibold text-app-text">{item.value}</p>
                     </div>
@@ -369,7 +371,8 @@ export default function ProfilePage() {
           </Card>
 
           <Card>
-            <h3 className="text-xl font-semibold text-app-text">AI guidance + diet suggestions</h3>
+            <p className="field-label">Personalization output</p>
+            <h3 className="mt-2 text-xl font-semibold text-app-text">AI guidance + diet suggestions</h3>
             <div className="mt-5 grid gap-3">
               {(macroPlan?.aiAdvice || []).map((tip) => (
                 <div key={tip} className="rounded-2xl border border-app-border bg-app-surface-strong p-4 text-sm text-app-text">

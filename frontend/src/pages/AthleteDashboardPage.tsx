@@ -13,12 +13,11 @@ import ProgressBar from "../components/ui/ProgressBar";
 import ProgressRing from "../components/ui/ProgressRing";
 import { useToast } from "../context/ToastContext";
 import { extractApiErrorMessage, isPositiveNumber } from "../lib/validation";
+import type { ChartData } from "chart.js";
 import type { StatCardData } from "../types";
 
-type ChartState = {
-  labels: string[];
-  datasets: any[];
-};
+type LineChartState = ChartData<"line", number[], string>;
+type BarChartState = ChartData<"bar", number[], string>;
 
 type SleepEntry = {
   id: string;
@@ -44,10 +43,10 @@ export default function AthleteDashboardPage() {
   const [nutritionItems, setNutritionItems] = useState<
     { meal: string; calories: number; macros: string }[]
   >([]);
-  const [workoutChartData, setWorkoutChartData] = useState<ChartState>({ labels: [], datasets: [] });
-  const [nutritionChartData, setNutritionChartData] = useState<ChartState>({ labels: [], datasets: [] });
-  const [runningChartData, setRunningChartData] = useState<ChartState>({ labels: [], datasets: [] });
-  const [strengthChartData, setStrengthChartData] = useState<ChartState>({ labels: [], datasets: [] });
+  const [workoutChartData, setWorkoutChartData] = useState<LineChartState>({ labels: [], datasets: [] });
+  const [nutritionChartData, setNutritionChartData] = useState<BarChartState>({ labels: [], datasets: [] });
+  const [runningChartData, setRunningChartData] = useState<LineChartState>({ labels: [], datasets: [] });
+  const [strengthChartData, setStrengthChartData] = useState<BarChartState>({ labels: [], datasets: [] });
   const [performanceScore, setPerformanceScore] = useState(0);
   const [sleepHoursInput, setSleepHoursInput] = useState("");
   const [sleepNoteInput, setSleepNoteInput] = useState("");
@@ -195,10 +194,10 @@ export default function AthleteDashboardPage() {
         setNutritionItems([]);
       }
 
-      setWorkoutChartData(charts.weeklyWorkoutProgress || { labels: [], datasets: [] });
-      setNutritionChartData(charts.nutritionTrend || { labels: [], datasets: [] });
-      setRunningChartData(charts.runningPerformance || { labels: [], datasets: [] });
-      setStrengthChartData(charts.strengthImprovement || { labels: [], datasets: [] });
+      setWorkoutChartData((charts.weeklyWorkoutProgress || { labels: [], datasets: [] }) as LineChartState);
+      setNutritionChartData((charts.nutritionTrend || { labels: [], datasets: [] }) as BarChartState);
+      setRunningChartData((charts.runningPerformance || { labels: [], datasets: [] }) as LineChartState);
+      setStrengthChartData((charts.strengthImprovement || { labels: [], datasets: [] }) as BarChartState);
     } catch (error) {
       if (!axios.isAxiosError(error)) {
         console.error(error);
@@ -301,7 +300,7 @@ export default function AthleteDashboardPage() {
   }
 
   return (
-    <div>
+    <div className="app-page">
       <PageHeader
         eyebrow="Athlete dashboard"
         title="Everything that matters today, in one performance cockpit."
@@ -342,11 +341,19 @@ export default function AthleteDashboardPage() {
         </Card>
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      {isLoading ? (
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="skeleton h-36" />
+          ))}
+        </section>
+      ) : (
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         {stats.map((stat) => (
           <StatCard key={stat.label} {...stat} />
         ))}
       </section>
+      )}
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="grid gap-6">
@@ -385,35 +392,35 @@ export default function AthleteDashboardPage() {
               Live remaining targets for today based on your personalized macro profile.
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-app-surface-strong p-4">
+              <div className="surface-tile">
                 <p className="text-sm text-app-text-soft">Calories left</p>
                 <p className="mt-2 text-xl font-semibold text-app-text">
                   {todayPlan.caloriesLeft} kcal
                 </p>
                 <p className="text-xs text-app-text-soft">Target {todayPlan.caloriesTarget} kcal</p>
               </div>
-              <div className="rounded-2xl bg-app-surface-strong p-4">
+              <div className="surface-tile">
                 <p className="text-sm text-app-text-soft">Protein left</p>
                 <p className="mt-2 text-xl font-semibold text-app-text">
                   {todayPlan.proteinLeft} g
                 </p>
                 <p className="text-xs text-app-text-soft">Target {todayPlan.proteinTarget} g</p>
               </div>
-              <div className="rounded-2xl bg-app-surface-strong p-4">
+              <div className="surface-tile">
                 <p className="text-sm text-app-text-soft">Carbs left</p>
                 <p className="mt-2 text-xl font-semibold text-app-text">
                   {todayPlan.carbsLeft} g
                 </p>
                 <p className="text-xs text-app-text-soft">Target {todayPlan.carbsTarget} g</p>
               </div>
-              <div className="rounded-2xl bg-app-surface-strong p-4">
+              <div className="surface-tile">
                 <p className="text-sm text-app-text-soft">Fats left</p>
                 <p className="mt-2 text-xl font-semibold text-app-text">
                   {todayPlan.fatsLeft} g
                 </p>
                 <p className="text-xs text-app-text-soft">Target {todayPlan.fatsTarget} g</p>
               </div>
-              <div className="rounded-2xl bg-app-surface-strong p-4 sm:col-span-2">
+              <div className="surface-tile sm:col-span-2">
                 <p className="text-sm text-app-text-soft">Water left</p>
                 <p className="mt-2 text-xl font-semibold text-app-text">
                   {todayPlan.waterLeft} L
@@ -485,12 +492,12 @@ export default function AthleteDashboardPage() {
             </p>
             <div className="mt-4 grid gap-3">
               {sleepLogs.length === 0 ? (
-                <div className="rounded-2xl bg-app-surface-strong p-4 text-sm text-app-text-soft">
+                <div className="rounded-2xl border border-dashed border-app-border bg-app-surface-strong/80 p-4 text-sm text-app-text-soft">
                   No sleep logs yet. Add your first sleep entry above.
                 </div>
               ) : (
                 sleepLogs.slice(0, 6).map((entry) => (
-                  <div key={entry.id} className="rounded-2xl bg-app-surface-strong p-4">
+                  <div key={entry.id} className="surface-tile">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="font-semibold text-app-text">{entry.hours} hrs</p>
@@ -515,12 +522,12 @@ export default function AthleteDashboardPage() {
             <h3 className="text-lg font-semibold text-app-text">Daily nutrition log</h3>
             <div className="mt-4 grid gap-3">
               {nutritionItems.length === 0 ? (
-                <div className="rounded-2xl bg-app-surface-strong p-4 text-sm text-app-text-soft">
+                <div className="rounded-2xl border border-dashed border-app-border bg-app-surface-strong/80 p-4 text-sm text-app-text-soft">
                   No meals logged yet. Add your first meal from Nutrition to populate today&apos;s intake.
                 </div>
               ) : (
                 nutritionItems.map((meal) => (
-                  <div key={meal.meal} className="rounded-2xl bg-app-surface-strong p-4">
+                  <div key={meal.meal} className="surface-tile">
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-semibold text-app-text">{meal.meal}</p>
                       <p className="text-sm text-app-text-soft">{meal.calories} kcal</p>

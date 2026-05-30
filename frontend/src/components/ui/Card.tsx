@@ -9,7 +9,7 @@ export default function Card({
 }) {
   return (
     <section
-      className={`glass-panel overflow-hidden before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_45%)] before:opacity-70 p-5 md:p-6 ${className}`}
+      className={`glass-panel interactive-card overflow-hidden p-5 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(135deg,rgba(255,255,255,0.1),transparent_44%)] before:opacity-70 md:p-6 ${className}`}
     >
       <div className="relative">{children}</div>
     </section>

@@ -71,10 +71,28 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-app px-4 py-8">
+    <div className="grid min-h-screen bg-app px-4 py-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-6">
+      <section className="hidden items-center lg:flex">
+        <div className="max-w-xl">
+          <p className="field-label">Start your workspace</p>
+          <h1 className="mt-4 text-6xl font-bold leading-[1.02] text-app-text">Set up the system behind your next training block.</h1>
+          <p className="mt-5 text-base leading-8 text-app-text-soft">
+            Create an athlete or coach account, then complete onboarding to activate personalized targets and dashboards.
+          </p>
+          <div className="mt-8 grid gap-3">
+            {["Profile and macro personalization", "Daily performance dashboard", "Coach-ready athlete notes"].map((item) => (
+              <div key={item} className="surface-tile font-semibold text-app-text">
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="flex items-center justify-center">
       <Card className="w-full max-w-xl p-8">
-        <p className="text-sm uppercase tracking-[0.24em] text-app-text-soft">Start your workspace</p>
-        <h1 className="mt-3 text-4xl font-bold text-app-text">Create your Athlytic account</h1>
+        <p className="field-label">Create account</p>
+        <h2 className="mt-3 text-4xl font-bold text-app-text">Join Athlytic</h2>
         <form className="mt-8 grid gap-4" onSubmit={handleSubmit}>
           <div className="grid gap-4 md:grid-cols-2">
             <Input
@@ -102,12 +120,12 @@ export default function RegisterPage() {
               onChange={(event) => setForm((current) => ({ ...current, sport: event.target.value }))}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 rounded-3xl bg-app-surface-strong/70 p-1.5">
             <button
               type="button"
               onClick={() => setRole("athlete")}
-              className={`rounded-2xl px-4 py-3 text-sm font-semibold ${
-                role === "athlete" ? "bg-app-primary text-white" : "bg-app-surface-strong text-app-text"
+              className={`focus-ring rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                role === "athlete" ? "bg-app-primary text-white shadow-lift" : "text-app-text-soft hover:text-app-text"
               }`}
             >
               Athlete account
@@ -115,8 +133,8 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => setRole("coach")}
-              className={`rounded-2xl px-4 py-3 text-sm font-semibold ${
-                role === "coach" ? "bg-app-accent text-slate-950" : "bg-app-surface-strong text-app-text"
+              className={`focus-ring rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                role === "coach" ? "bg-app-accent text-slate-950 shadow-lift" : "text-app-text-soft hover:text-app-text"
               }`}
             >
               Coach account
@@ -134,6 +152,7 @@ export default function RegisterPage() {
           </Link>
         </p>
       </Card>
+      </section>
     </div>
   );
 }

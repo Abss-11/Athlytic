@@ -22,10 +22,13 @@ export default {
           accent: "rgb(var(--accent) / <alpha-value>)",
           "accent-strong": "rgb(var(--accent-strong) / <alpha-value>)",
           danger: "rgb(var(--danger) / <alpha-value>)",
+          warning: "rgb(var(--warning) / <alpha-value>)",
+          success: "rgb(var(--success) / <alpha-value>)",
         },
       },
       boxShadow: {
         soft: "0 24px 60px rgba(var(--shadow))",
+        lift: "0 18px 45px rgba(var(--shadow))",
       },
     },
   },
