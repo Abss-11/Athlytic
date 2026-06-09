@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { authApi } from "../api/api";
 import type { UserRole } from "../types";
@@ -38,22 +38,37 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function readStoredToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.localStorage.getItem("athlytic-token");
+}
+
+function readStoredUser() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const storedUser = window.localStorage.getItem("athlytic-user");
+
+  if (!storedUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(storedUser) as AuthUser;
+  } catch {
+    window.localStorage.removeItem("athlytic-user");
+    window.localStorage.removeItem("athlytic-token");
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    const storedToken = window.localStorage.getItem("athlytic-token");
-    const storedUser = window.localStorage.getItem("athlytic-user");
-
-    if (storedToken) {
-      setToken(storedToken);
-    }
-
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
+  const [user, setUser] = useState<AuthUser | null>(() => readStoredUser());
+  const [token, setToken] = useState<string | null>(() => readStoredToken());
 
   const login = useCallback(async (email: string, password: string, role: UserRole) => {
     const response = await authApi.login({ email, password, role });

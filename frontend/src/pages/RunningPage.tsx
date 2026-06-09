@@ -7,8 +7,11 @@ import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
 import { useToast } from "../context/ToastContext";
 import { extractApiErrorMessage, isPositiveNumber } from "../lib/validation";
-import BarChartCard from "../components/charts/BarChartCard";
-import LineChartCard from "../components/charts/LineChartCard";
+import {
+  RechartsDistanceCard,
+  RechartsPaceCard,
+  RechartsSpeedCard,
+} from "../components/charts/RechartsRunningCharts";
 
 type RunningLog = {
   id: string;
@@ -213,63 +216,7 @@ export default function RunningPage() {
   const speeds = sessions.map(s => calculateSpeed(s.distanceKm, s.durationMinutes)).filter(s => s > 0);
   const avgSpeed = speeds.length > 0 ? (speeds.reduce((sum, s) => sum + s, 0) / speeds.length).toFixed(1) : "0.0";
 
-  // Calculate distance chart data (green/blue styling)
-  const distanceChartData = {
-    labels: sessions.map((s, i) => {
-      const date = s.loggedAt || s.createdAt;
-      return date
-        ? new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })
-        : `Run ${i + 1}`;
-    }),
-    datasets: [
-      {
-        label: "Distance (km)",
-        data: sessions.map((s) => s.distanceKm),
-        backgroundColor: "#4c80ff", // Blue Accent
-        borderRadius: 8,
-      },
-    ],
-  };
 
-  // Calculate pace chart data (green/blue styling)
-  const paceChartData = {
-    labels: sessions.map((s, i) => {
-      const date = s.loggedAt || s.createdAt;
-      return date
-        ? new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })
-        : `Run ${i + 1}`;
-    }),
-    datasets: [
-      {
-        label: "Pace (min/km)",
-        data: sessions.map((s) => parsePaceToDecimal(s.pace)),
-        borderColor: "#7dff52", // Green Accent
-        backgroundColor: "rgba(125, 255, 82, 0.16)",
-        tension: 0.35,
-        fill: true,
-      },
-    ],
-  };
-
-  // Calculate speed chart data (blue/cyan styling)
-  const speedChartData = {
-    labels: sessions.map((s, i) => {
-      const date = s.loggedAt || s.createdAt;
-      return date
-        ? new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })
-        : `Run ${i + 1}`;
-    }),
-    datasets: [
-      {
-        label: "Speed (km/h)",
-        data: sessions.map((s) => calculateSpeed(s.distanceKm, s.durationMinutes)),
-        borderColor: "#4c80ff", // Blue/Cyan Line
-        backgroundColor: "rgba(76, 128, 255, 0.16)",
-        tension: 0.35,
-        fill: true,
-      },
-    ],
-  };
 
   return (
     <div className="app-page">
@@ -407,25 +354,9 @@ export default function RunningPage() {
 
       {/* Progress Charts Section */}
       <section className="mt-6 grid gap-6 md:grid-cols-3">
-        <BarChartCard
-          title="Distance per run"
-          subtitle="Distance covered in kilometers for each recorded session."
-          data={distanceChartData}
-          emptyMessage="No runs logged yet. Log a session to see your distance chart."
-        />
-        <LineChartCard
-          title="Pace improvement over time"
-          subtitle="Pace trend in minutes per kilometer. Lower is faster."
-          data={paceChartData}
-          reverseY={true}
-          emptyMessage="No runs logged yet. Log a session to see your pace progression."
-        />
-        <LineChartCard
-          title="Speed over time"
-          subtitle="Average speed trend in km/h for each session."
-          data={speedChartData}
-          emptyMessage="No runs logged yet. Log a session to see your speed progression."
-        />
+        <RechartsDistanceCard sessions={sessions} />
+        <RechartsPaceCard sessions={sessions} />
+        <RechartsSpeedCard sessions={sessions} />
       </section>
     </div>
   );
