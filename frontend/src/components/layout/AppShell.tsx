@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { dashboardApi, runningApi } from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { useBillingPlan } from "../../lib/plans";
 import Button from "../ui/Button";
 
 const navItems = [
@@ -22,6 +23,7 @@ export default function AppShell() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { plan, isPro } = useBillingPlan();
 
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; type: string }[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -230,8 +232,27 @@ export default function AppShell() {
             <p className="text-xs font-semibold uppercase text-app-text-soft [letter-spacing:0.16em]">Logged in as</p>
             <h3 className="mt-2 text-lg font-semibold text-app-text">{user?.name ?? "Guest user"}</h3>
             <p className="text-sm text-app-text-soft">{user?.email ?? "guest@athlytic.app"}</p>
-            <Button variant="secondary" className="mt-4 w-full" onClick={handleOpenReport}>
-              Weekly report ready
+            <div className="mt-4 rounded-2xl border border-app-border/70 bg-app-surface px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">Plan</p>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${isPro ? "bg-app-accent/16 text-app-accent" : "bg-app-primary/12 text-app-primary"}`}>
+                  {isPro ? "Pro" : "Free"}
+                </span>
+              </div>
+              <p className="mt-1 text-sm font-semibold text-app-text">{plan.name}</p>
+            </div>
+            <Button
+              variant="secondary"
+              className="mt-4 w-full"
+              onClick={() => {
+                if (isPro) {
+                  void handleOpenReport();
+                  return;
+                }
+                navigate("/profile");
+              }}
+            >
+              {isPro ? "Weekly report ready" : "Unlock weekly reports"}
             </Button>
             <Button
               variant="ghost"

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import PricingCards from "../components/billing/PricingCards";
 import { useTheme } from "../context/ThemeContext";
 
 const proofMetrics = [
@@ -166,7 +167,7 @@ export default function LandingPage() {
           ))}
         </section>
 
-        <section className="mt-5 grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
+        <section className="mt-5">
           <Card>
             <p className="field-label">Why athletes stay</p>
             <h3 className="mt-4 text-3xl font-bold text-app-text">Clear feedback loops, less dashboard noise.</h3>
@@ -186,28 +187,17 @@ export default function LandingPage() {
               ))}
             </div>
           </Card>
+        </section>
 
+        <section className="mt-5">
           <Card>
             <p className="field-label">Plans</p>
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              {[
-                { tier: "Starter", price: "$19", copy: "Solo athletes building consistency." },
-                { tier: "Pro", price: "$49", copy: "Advanced tracking and performance analytics.", featured: true },
-                { tier: "Team", price: "$149", copy: "Coach portal and athlete operations." },
-              ].map((plan) => (
-                <div
-                  key={plan.tier}
-                  className={`rounded-3xl border p-5 ${
-                    plan.featured
-                      ? "border-app-primary bg-gradient-to-br from-app-primary to-app-primary-strong text-white shadow-lift"
-                      : "border-app-border bg-app-surface-soft"
-                  }`}
-                >
-                  <p className={plan.featured ? "text-sm text-white/72" : "text-sm text-app-text-soft"}>{plan.tier}</p>
-                  <h3 className="mt-3 text-3xl font-bold">{plan.price}</h3>
-                  <p className={plan.featured ? "mt-2 text-sm text-white/72" : "mt-2 text-sm text-app-text-soft"}>{plan.copy}</p>
-                </div>
-              ))}
+            <h3 className="mt-4 text-3xl font-bold text-app-text">Choose how deep you want to train.</h3>
+            <p className="mt-3 text-sm leading-7 text-app-text-soft">
+              Start free with core tracking. Upgrade when you are ready for advanced analytics, PDF reports, and coaching insights.
+            </p>
+            <div className="mt-6">
+              <PricingCards />
             </div>
           </Card>
         </section>

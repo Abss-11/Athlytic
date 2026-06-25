@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { reportsApi } from "../api/api";
+import ProFeatureLock from "../components/billing/ProFeatureLock";
 import PageHeader from "../components/layout/PageHeader";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import ProgressBar from "../components/ui/ProgressBar";
+import { useBillingPlan } from "../lib/plans";
 
 interface ScoreBreakdownItem {
   key: string;
@@ -145,6 +147,7 @@ function renderTrendCard(title: string, subtitle: string, block: TrendBlock, not
 }
 
 export default function ReportsPage() {
+  const { isPro } = useBillingPlan();
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [trends, setTrends] = useState<ReportsTrendPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -172,6 +175,11 @@ export default function ReportsPage() {
   }, []);
 
   async function handleDownloadPdf() {
+    if (!isPro) {
+      setError("");
+      return;
+    }
+
     try {
       setIsDownloading(true);
       const response = await reportsApi.downloadWeeklyPdf();
@@ -246,11 +254,21 @@ export default function ReportsPage() {
               Includes structured trend tables, score band, breakdown bars, and focus recommendations.
             </p>
           </div>
-          <Button variant="secondary" onClick={handleDownloadPdf} disabled={isLoading || isDownloading}>
-            {isDownloading ? "Generating PDF..." : "Download Weekly PDF"}
+          <Button variant="secondary" onClick={handleDownloadPdf} disabled={isLoading || isDownloading || !isPro}>
+            {!isPro ? "Pro export" : isDownloading ? "Generating PDF..." : "Download Weekly PDF"}
           </Button>
         </Card>
       </div>
+
+      {!isPro ? (
+        <div className="mb-6">
+          <ProFeatureLock
+            title="PDF exports are available on Athlytic Pro"
+            description="Upgrade to Pro monthly, Pro yearly, or Student Pro to export weekly reports and share coach-ready performance summaries."
+            cta="Compare plans"
+          />
+        </div>
+      ) : null}
 
       {error ? (
         <Card className="border-red-500/40 bg-red-500/10 text-red-400">

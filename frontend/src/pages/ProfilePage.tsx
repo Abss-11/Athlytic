@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { profileApi } from "../api/api";
 import PageHeader from "../components/layout/PageHeader";
+import PricingCards from "../components/billing/PricingCards";
 import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { useBillingPlan } from "../lib/plans";
 import type { MacroPlan, UserRole } from "../types";
 
 type ProfileApiUser = {
@@ -91,6 +93,7 @@ function parseOptionalNumber(value: string) {
 export default function ProfilePage() {
   const { user, replaceUser } = useAuth();
   const { pushToast } = useToast();
+  const { plan, planId, isPro, setPlanId } = useBillingPlan();
   const [form, setForm] = useState<ProfileFormState>(() => toFormState((user as ProfileApiUser | null) ?? null));
   const [macroPlan, setMacroPlan] = useState<MacroPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -331,6 +334,31 @@ export default function ProfilePage() {
         </Card>
 
         <div className="grid gap-6">
+          <Card>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="field-label">Subscription</p>
+                <h3 className="mt-2 text-xl font-semibold text-app-text">{plan.name}</h3>
+                <p className="mt-1 text-sm text-app-text-soft">
+                  {plan.price} {plan.cadence}. {isPro ? "Advanced insights are active." : "Upgrade to unlock reports and deeper analytics."}
+                </p>
+              </div>
+              <span className={`metric-chip ${isPro ? "border-app-accent/30 bg-app-accent/10 text-app-accent" : "border-app-primary/30 bg-app-primary/10 text-app-primary"}`}>
+                {isPro ? "Pro active" : "Free plan"}
+              </span>
+            </div>
+            <div className="mt-5">
+              <PricingCards
+                compact
+                currentPlanId={planId}
+                onSelectPlan={(nextPlanId) => {
+                  setPlanId(nextPlanId);
+                  pushToast("Plan updated for this demo workspace.", "success");
+                }}
+              />
+            </div>
+          </Card>
+
           <Card>
             <p className="field-label">Generated plan</p>
             <h3 className="mt-2 text-xl font-semibold text-app-text">Personalized daily targets</h3>
