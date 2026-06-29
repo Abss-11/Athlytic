@@ -1,0 +1,1988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Athlytic — Train. Recover. Improve.</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #00ff88;
+    --blue: #0ea5ff;
+    --dark: #05050a;
+    --dark2: #0d0d1a;
+    --dark3: #111122;
+    --glass: rgba(255,255,255,0.04);
+    --glass-border: rgba(255,255,255,0.08);
+    --text: #ffffff;
+    --text-muted: rgba(255,255,255,0.5);
+    --green-dim: rgba(0,255,136,0.15);
+    --blue-dim: rgba(14,165,255,0.15);
+    --transition: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: #000;
+    font-family: 'Space Grotesk', sans-serif;
+    overflow: hidden;
+    color: var(--text);
+  }
+
+  #stage {
+    position: relative;
+    width: 100vw;
+    height: 56.25vw;
+    max-height: 100vh;
+    max-width: calc(100vh * 16/9);
+    margin: auto;
+    background: var(--dark);
+    overflow: hidden;
+  }
+
+  /* ─── SCENE WRAPPER ─── */
+  .scene {
+    position: absolute; inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s var(--transition);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .scene.active { opacity: 1; pointer-events: all; }
+
+  /* ─── AMBIENT BACKGROUND ELEMENTS ─── */
+  .grid-bg {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridPulse 4s ease-in-out infinite;
+  }
+  @keyframes gridPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .noise {
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    opacity: 0.4;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+
+  /* ─── SCENE 1: ATHLETE INTRO ─── */
+  #s1 { background: radial-gradient(ellipse 80% 60% at 50% 80%, rgba(0,255,136,0.08) 0%, transparent 70%), var(--dark); }
+
+  .s1-shoe-visual {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 55%;
+    background: linear-gradient(180deg, transparent 0%, rgba(0,20,10,0.6) 100%);
+  }
+
+  .s1-floor {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+    animation: scanLine 2s ease-in-out infinite;
+  }
+  @keyframes scanLine {
+    0%, 100% { opacity: 0.4; transform: scaleX(0.6); }
+    50% { opacity: 1; transform: scaleX(1); }
+  }
+
+  .s1-glow-orb {
+    position: absolute;
+    bottom: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60vw;
+    height: 40vw;
+    background: radial-gradient(ellipse, rgba(0,255,136,0.12) 0%, transparent 70%);
+    animation: orbPulse 3s ease-in-out infinite;
+  }
+  @keyframes orbPulse {
+    0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.6; }
+    50% { transform: translateX(-50%) scale(1.15); opacity: 1; }
+  }
+
+  .athlete-silhouette {
+    position: absolute;
+    bottom: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 180px;
+    height: 260px;
+  }
+
+  .shoe-knot-area {
+    position: absolute;
+    bottom: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 220px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .shoe {
+    width: 90px;
+    height: 40px;
+    background: linear-gradient(135deg, #1a1a2e, #0d0d1a);
+    border: 1px solid rgba(0,255,136,0.3);
+    border-radius: 20px 30px 10px 10px;
+    position: relative;
+    box-shadow: 0 0 20px rgba(0,255,136,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+    animation: shoeGlow 2s ease-in-out infinite;
+  }
+  .shoe::before {
+    content: '';
+    position: absolute;
+    top: 8px; left: 12px; right: 12px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+    border-radius: 1px;
+    opacity: 0.6;
+  }
+  .shoe::after {
+    content: '';
+    position: absolute;
+    top: 14px; left: 16px; right: 16px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--blue), transparent);
+    border-radius: 1px;
+    opacity: 0.4;
+  }
+  @keyframes shoeGlow {
+    0%, 100% { box-shadow: 0 0 20px rgba(0,255,136,0.2); }
+    50% { box-shadow: 0 0 35px rgba(0,255,136,0.4), 0 0 60px rgba(14,165,255,0.15); }
+  }
+
+  /* ─── HEADLINE TEXT ─── */
+  .headline {
+    position: absolute;
+    top: 18%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 90%;
+    z-index: 10;
+  }
+
+  .hl-eyebrow {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(10px, 1.2vw, 14px);
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 1rem;
+    opacity: 0;
+    animation: fadeSlideUp 0.8s var(--transition) 0.3s forwards;
+  }
+
+  .hl-main {
+    font-size: clamp(28px, 5.5vw, 72px);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: #fff;
+    opacity: 0;
+    animation: fadeSlideUp 0.8s var(--transition) 0.5s forwards;
+  }
+  .hl-main .accent-g { color: var(--green); }
+  .hl-main .accent-b { color: var(--blue); }
+
+  .hl-sub {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(12px, 1.6vw, 20px);
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-top: 1rem;
+    letter-spacing: 0.01em;
+    opacity: 0;
+    animation: fadeSlideUp 0.8s var(--transition) 0.7s forwards;
+  }
+
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── DATA LINES ─── */
+  .data-line {
+    position: absolute;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+    animation: dataFlow 2s linear infinite;
+  }
+  @keyframes dataFlow {
+    0% { transform: scaleX(0); transform-origin: left; opacity: 0; }
+    50% { transform: scaleX(1); transform-origin: left; opacity: 1; }
+    100% { transform: scaleX(0); transform-origin: right; opacity: 0; }
+  }
+
+  /* ─── SCENE 2: FAST CUTS ─── */
+  #s2 { background: var(--dark); overflow: hidden; }
+
+  .s2-grid {
+    position: absolute; inset: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 3px;
+    background: #000;
+  }
+
+  .s2-cell {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .s2-cell-inner {
+    position: absolute; inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    opacity: 0;
+    animation: cellReveal 0.4s var(--transition) forwards;
+  }
+
+  @keyframes cellReveal {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .cell-icon {
+    font-size: clamp(24px, 3.5vw, 48px);
+    filter: drop-shadow(0 0 12px var(--green));
+  }
+
+  .cell-label {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(9px, 1.1vw, 13px);
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--green);
+  }
+
+  .cell-value {
+    font-size: clamp(18px, 2.5vw, 32px);
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .cell-unit {
+    font-size: clamp(9px, 1vw, 12px);
+    color: var(--text-muted);
+  }
+
+  /* Spark bars */
+  .spark-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 30px;
+  }
+  .spark-bar {
+    width: 6px;
+    background: var(--green);
+    border-radius: 2px 2px 0 0;
+    animation: barGrow 0.5s var(--transition) forwards;
+    transform-origin: bottom;
+    opacity: 0.8;
+  }
+  @keyframes barGrow {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+  }
+
+  /* Data flow overlay */
+  .s2-overlay {
+    position: absolute; inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .s2-overlay.show { opacity: 1; }
+
+  .data-funnel {
+    position: relative;
+    width: 80%;
+    height: 80%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ─── SCENE 3: DASHBOARD ─── */
+  #s3 { background: radial-gradient(ellipse 100% 80% at 50% 100%, rgba(14,165,255,0.06) 0%, transparent 60%), var(--dark); }
+
+  .dashboard {
+    position: relative;
+    width: 88%;
+    height: 78%;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    grid-template-rows: auto 1fr 1fr;
+    gap: clamp(6px, 1vw, 12px);
+    z-index: 5;
+    opacity: 0;
+    animation: fadeSlideUp 0.9s var(--transition) 0.2s forwards;
+  }
+
+  .glass-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: clamp(10px, 1.5vw, 18px);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+  }
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  }
+
+  .card-accent-g { border-top: 2px solid var(--green); }
+  .card-accent-b { border-top: 2px solid var(--blue); }
+
+  .metric-label {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(8px, 0.9vw, 11px);
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .metric-value {
+    font-size: clamp(18px, 2.8vw, 38px);
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.1;
+  }
+  .metric-unit {
+    font-size: clamp(9px, 1vw, 13px);
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  .metric-delta {
+    font-size: clamp(8px, 0.9vw, 11px);
+    color: var(--green);
+    font-family: 'Inter', sans-serif;
+    margin-top: 2px;
+  }
+
+  /* Mini chart */
+  .mini-chart {
+    width: 100%;
+    height: clamp(35px, 5vw, 60px);
+    margin-top: 8px;
+  }
+
+  /* Score ring */
+  .score-ring-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: clamp(60px, 8vw, 100px);
+    margin: 4px 0;
+  }
+  .score-ring {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(60px, 8vw, 100px);
+    height: clamp(60px, 8vw, 100px);
+  }
+  .score-ring svg { position: absolute; inset: 0; }
+  .score-ring .score-num {
+    font-size: clamp(16px, 2.2vw, 28px);
+    font-weight: 700;
+    color: #fff;
+    z-index: 1;
+  }
+
+  .ring-track {
+    fill: none;
+    stroke: rgba(255,255,255,0.05);
+    stroke-width: 6;
+  }
+  .ring-fill {
+    fill: none;
+    stroke: url(#ringGrad);
+    stroke-width: 6;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    stroke-dasharray: 251;
+    stroke-dashoffset: 251;
+    animation: ringFill 1.5s var(--transition) 0.5s forwards;
+  }
+  @keyframes ringFill {
+    to { stroke-dashoffset: 40; }
+  }
+
+  /* Bar chart inline */
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .bar-day {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(7px, 0.8vw, 10px);
+    color: var(--text-muted);
+    width: 20px;
+    flex-shrink: 0;
+  }
+  .bar-track {
+    flex: 1;
+    height: clamp(5px, 0.7vw, 8px);
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transform-origin: left;
+    transform: scaleX(0);
+    animation: barFill 0.8s var(--transition) forwards;
+  }
+  @keyframes barFill {
+    to { transform: scaleX(1); }
+  }
+
+  /* Coach note card */
+  .coach-note {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(9px, 1.1vw, 13px);
+    line-height: 1.6;
+    color: var(--text-muted);
+    border-left: 2px solid var(--blue);
+    padding-left: 10px;
+    margin-top: 8px;
+  }
+  .coach-avatar {
+    width: clamp(22px, 3vw, 32px);
+    height: clamp(22px, 3vw, 32px);
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue), var(--green));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(9px, 1vw, 11px);
+    font-weight: 700;
+    color: #000;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  /* Pace chart (SVG sparkline) */
+  .pace-line {
+    stroke-dasharray: 400;
+    stroke-dashoffset: 400;
+    animation: drawLine 1.5s var(--transition) 0.6s forwards;
+  }
+  @keyframes drawLine {
+    to { stroke-dashoffset: 0; }
+  }
+
+  /* span-2 grid */
+  .span-2 { grid-column: span 2; }
+  .span-3 { grid-column: span 3; }
+  .row-span-2 { grid-row: span 2; }
+
+  /* Dashboard headline */
+  .dash-headline {
+    position: absolute;
+    top: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 10;
+  }
+
+  /* ─── SCENE 4: COACH + ATHLETE ─── */
+  #s4 { background: radial-gradient(ellipse 60% 80% at 30% 50%, rgba(14,165,255,0.07), transparent 60%), var(--dark); }
+
+  .split-scene {
+    position: absolute; inset: 0;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .split-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5%;
+    gap: clamp(12px, 2vw, 24px);
+    opacity: 0;
+  }
+  .split-panel.left { animation: fadeSlideRight 0.8s var(--transition) 0.2s forwards; }
+  .split-panel.right { animation: fadeSlideLeft 0.8s var(--transition) 0.4s forwards; }
+
+  @keyframes fadeSlideRight {
+    from { opacity: 0; transform: translateX(-30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fadeSlideLeft {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .divider-v {
+    width: 1px;
+    height: 60%;
+    align-self: center;
+    background: linear-gradient(180deg, transparent, var(--glass-border), transparent);
+  }
+
+  .device-frame {
+    width: clamp(140px, 20vw, 260px);
+    background: var(--dark2);
+    border: 1px solid var(--glass-border);
+    border-radius: clamp(12px, 2vw, 20px);
+    padding: clamp(10px, 1.5vw, 18px);
+    position: relative;
+  }
+  .device-frame::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 50%;
+    transform: translateX(-50%);
+    width: 40%;
+    height: 4px;
+    background: var(--dark);
+    border-radius: 0 0 6px 6px;
+  }
+
+  .tablet-frame {
+    width: clamp(180px, 26vw, 340px);
+    aspect-ratio: 4/3;
+    background: var(--dark2);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: clamp(10px, 1.5vw, 18px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .person-badge {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(9px, 1.2vw, 14px);
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ─── SCENE 5: PRICING ─── */
+  #s5 { background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,255,136,0.05) 0%, transparent 70%), var(--dark); }
+
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: clamp(8px, 1.2vw, 16px);
+    width: 88%;
+    z-index: 5;
+    opacity: 0;
+    animation: fadeSlideUp 0.8s var(--transition) 0.3s forwards;
+  }
+
+  .plan-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    padding: clamp(12px, 2vw, 24px) clamp(10px, 1.5vw, 18px);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(6px, 1vw, 12px);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s var(--transition), border-color 0.3s;
+  }
+  .plan-card.featured {
+    border-color: var(--green);
+    background: rgba(0,255,136,0.04);
+  }
+  .plan-card.featured::after {
+    content: 'POPULAR';
+    position: absolute;
+    top: 10px; right: 10px;
+    background: var(--green);
+    color: #000;
+    font-size: clamp(7px, 0.8vw, 9px);
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  .plan-name {
+    font-size: clamp(11px, 1.4vw, 18px);
+    font-weight: 700;
+    color: #fff;
+  }
+  .plan-price {
+    font-size: clamp(18px, 3vw, 40px);
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+  }
+  .plan-price span {
+    font-size: clamp(9px, 1vw, 13px);
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  .plan-price.free { color: var(--green); }
+  .plan-price.pro { color: var(--blue); }
+  .plan-price.yearly { color: var(--green); }
+  .plan-price.student { color: #a78bfa; }
+
+  .plan-feature {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(8px, 0.9vw, 11px);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .plan-feature::before {
+    content: '✓';
+    color: var(--green);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .plan-feature.blue::before { color: var(--blue); }
+  .plan-feature.purple::before { color: #a78bfa; }
+
+  /* ─── SCENE 6: HERO FINAL ─── */
+  #s6 {
+    background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(14,165,255,0.06), transparent 60%),
+                radial-gradient(ellipse 60% 80% at 50% 90%, rgba(0,255,136,0.08), transparent 60%),
+                var(--dark);
+  }
+
+  .stadium-lights {
+    position: absolute; inset: 0;
+    overflow: hidden;
+  }
+  .light-beam {
+    position: absolute;
+    width: 3px;
+    height: 60%;
+    background: linear-gradient(180deg, rgba(255,255,200,0.08), transparent);
+    animation: lightSway 3s ease-in-out infinite;
+    transform-origin: top center;
+    border-radius: 2px;
+  }
+
+  .runner-track {
+    position: absolute;
+    bottom: 18%;
+    left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(0,255,136,0.4), transparent);
+  }
+  .runner-dot {
+    position: absolute;
+    bottom: calc(18% - 3px);
+    left: -4%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 20px var(--green), 0 0 40px rgba(0,255,136,0.4);
+    animation: runnerMove 2.5s ease-in-out 0.5s forwards;
+  }
+  @keyframes runnerMove {
+    0% { left: -4%; opacity: 0; }
+    10% { opacity: 1; }
+    100% { left: 106%; opacity: 1; }
+  }
+
+  /* Motion blur trail */
+  .runner-trail {
+    position: absolute;
+    bottom: calc(18% - 2px);
+    left: -4%;
+    height: 4px;
+    width: 60px;
+    background: linear-gradient(90deg, transparent, rgba(0,255,136,0.3));
+    border-radius: 2px;
+    animation: trailMove 2.5s ease-in-out 0.5s forwards;
+  }
+  @keyframes trailMove {
+    0% { left: -8%; opacity: 0; width: 60px; }
+    10% { opacity: 1; }
+    80% { width: 100px; }
+    100% { left: 96%; opacity: 0.5; }
+  }
+
+  /* Logo */
+  .logo-hero {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    opacity: 0;
+    animation: logoReveal 1.2s var(--transition) 0.6s forwards;
+  }
+  @keyframes logoReveal {
+    0% { opacity: 0; transform: scale(0.85) translateY(20px); filter: blur(8px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+  }
+
+  .logo-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 1.5vw, 16px);
+    margin-bottom: clamp(8px, 1.5vw, 16px);
+  }
+
+  .logo-icon {
+    width: clamp(36px, 6vw, 72px);
+    height: clamp(36px, 6vw, 72px);
+    background: linear-gradient(135deg, var(--green), var(--blue));
+    border-radius: clamp(8px, 1.2vw, 14px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(18px, 3vw, 36px);
+    box-shadow: 0 0 40px rgba(0,255,136,0.3), 0 0 80px rgba(14,165,255,0.2);
+    animation: iconPulse 2s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+  }
+  .logo-icon::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
+    animation: shimmer 3s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0% { transform: translateX(-100%) translateY(-100%); }
+    100% { transform: translateX(100%) translateY(100%); }
+  }
+  @keyframes iconPulse {
+    0%, 100% { box-shadow: 0 0 40px rgba(0,255,136,0.3), 0 0 80px rgba(14,165,255,0.2); }
+    50% { box-shadow: 0 0 60px rgba(0,255,136,0.5), 0 0 120px rgba(14,165,255,0.3); }
+  }
+
+  .logo-wordmark {
+    font-size: clamp(28px, 5vw, 68px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #fff 40%, rgba(255,255,255,0.7));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .tagline-hero {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(11px, 1.4vw, 18px);
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: clamp(6px, 1vw, 12px);
+  }
+  .tagline-hero span { color: var(--green); font-weight: 600; }
+
+  /* Particle system */
+  .particle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: particleFloat linear infinite;
+    pointer-events: none;
+  }
+  @keyframes particleFloat {
+    0% { transform: translateY(0) translateX(0); opacity: 0; }
+    10% { opacity: 0.8; }
+    90% { opacity: 0.4; }
+    100% { transform: translateY(-80vh) translateX(var(--drift)); opacity: 0; }
+  }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--green), var(--blue));
+    transition: width 0.1s linear;
+    z-index: 100;
+  }
+
+  /* ─── SCENE COUNTER ─── */
+  .scene-dots {
+    position: absolute;
+    bottom: 4%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transition: all 0.3s;
+  }
+  .dot.active {
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    transform: scale(1.3);
+  }
+
+  /* ─── SKIP / REPLAY ─── */
+  .ctrl-btn {
+    position: absolute;
+    z-index: 200;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.6);
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(10px, 1.2vw, 13px);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    padding: 6px 14px;
+    transition: all 0.2s;
+  }
+  .ctrl-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  #btn-replay { bottom: 8%; right: 4%; display: none; }
+  #btn-skip { top: 4%; right: 4%; }
+  #btn-mute { top: 4%; right: calc(4% + 80px); display: flex; align-items: center; gap: 6px; }
+  #btn-mute .mute-icon { font-size: 14px; line-height: 1; }
+
+  /* Audio start overlay */
+  #audio-gate {
+    position: absolute; inset: 0;
+    background: rgba(5,5,10,0.85);
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+  }
+  #audio-gate .gate-logo {
+    font-size: clamp(28px, 5vw, 60px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  #audio-gate .gate-logo .g-icon {
+    width: clamp(32px, 5vw, 60px);
+    height: clamp(32px, 5vw, 60px);
+    background: linear-gradient(135deg, var(--green), var(--blue));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(16px, 2.5vw, 28px);
+    animation: iconPulse 2s ease-in-out infinite;
+  }
+  #audio-gate .gate-cta {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(12px, 1.5vw, 18px);
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+  #audio-gate .gate-btn {
+    background: linear-gradient(135deg, var(--green), var(--blue));
+    border: none;
+    border-radius: 50px;
+    color: #000;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(13px, 1.6vw, 18px);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: clamp(10px,1.5vw,16px) clamp(24px,3.5vw,40px);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 30px rgba(0,255,136,0.3);
+  }
+  #audio-gate .gate-btn:hover { transform: scale(1.04); box-shadow: 0 0 50px rgba(0,255,136,0.5); }
+  #audio-gate .gate-hint {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(9px, 1vw, 12px);
+    color: rgba(255,255,255,0.25);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ─── GLOBAL HEADLINE POSITION ─── */
+  .scene-headline {
+    position: absolute;
+    bottom: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 90%;
+    z-index: 20;
+  }
+  .sh-tag {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(8px, 1vw, 12px);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 6px;
+    opacity: 0;
+    animation: fadeSlideUp 0.7s var(--transition) 0.4s forwards;
+  }
+  .sh-main {
+    font-size: clamp(16px, 2.8vw, 38px);
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.15;
+    opacity: 0;
+    animation: fadeSlideUp 0.7s var(--transition) 0.6s forwards;
+  }
+
+  @media (max-width: 640px) {
+    .pricing-grid { grid-template-columns: 1fr 1fr; }
+    .dashboard { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div class="noise"></div>
+  <div class="progress-bar" id="progress"></div>
+
+  <!-- SCENE DOTS -->
+  <div class="scene-dots" id="dots"></div>
+
+  <!-- AUDIO GATE -->
+  <div id="audio-gate" onclick="startWithAudio()">
+    <div class="gate-logo"><div class="g-icon">⚡</div> Athlytic</div>
+    <div class="gate-cta">Your performance story, with sound.</div>
+    <button class="gate-btn">▶ &nbsp; Play with Audio</button>
+    <div class="gate-hint">Click anywhere to begin</div>
+  </div>
+
+  <!-- SKIP & REPLAY -->
+  <button class="ctrl-btn" id="btn-skip" onclick="skipToEnd()" style="display:none;">Skip →</button>
+  <button class="ctrl-btn" id="btn-replay" onclick="replayVideo()" style="display:none;">↺ Replay</button>
+  <button class="ctrl-btn" id="btn-mute" onclick="toggleMute()" style="display:none;"><span class="mute-icon" id="mute-icon">🔊</span> Mute</button>
+
+  <!-- ══════════════════════════════════════
+       SCENE 1 — ATHLETE TYING SHOES
+  ══════════════════════════════════════ -->
+  <div class="scene" id="s1">
+    <div class="grid-bg"></div>
+    <div class="s1-glow-orb"></div>
+
+    <!-- Particle field -->
+    <div id="s1-particles"></div>
+
+    <!-- Athlete visual abstraction -->
+    <div class="s1-shoe-visual"></div>
+
+    <!-- Shoes at bottom -->
+    <div style="position:absolute; bottom:10%; left:50%; transform:translateX(-50%); display:flex; gap:16px; align-items:flex-end;">
+      <div class="shoe" style="transform:rotate(-8deg);"></div>
+      <div style="width:3px; height:40px; background:linear-gradient(180deg, transparent, var(--green)); opacity:0.5;"></div>
+      <div class="shoe" style="transform:rotate(8deg) scaleX(-1);"></div>
+    </div>
+    <div class="s1-floor"></div>
+
+    <!-- Data lines -->
+    <div class="data-line" style="top:35%; left:0; width:100%; animation-delay:0.5s;"></div>
+    <div class="data-line" style="top:55%; left:0; width:60%; animation-delay:1.2s;"></div>
+    <div class="data-line" style="top:70%; left:30%; width:70%; animation-delay:0.8s;"></div>
+
+    <!-- Floating metric blips -->
+    <div style="position:absolute; top:30%; right:8%; opacity:0; animation:fadeSlideUp 0.6s ease 0.9s forwards;">
+      <div class="glass-card card-accent-g" style="padding:10px 14px; min-width:100px;">
+        <div class="metric-label">Heart Rate</div>
+        <div class="metric-value" style="font-size:clamp(16px,2.5vw,30px);">142 <span class="metric-unit">bpm</span></div>
+        <div class="metric-delta">↑ Pre-workout</div>
+      </div>
+    </div>
+    <div style="position:absolute; top:40%; left:6%; opacity:0; animation:fadeSlideUp 0.6s ease 1.1s forwards;">
+      <div class="glass-card card-accent-b" style="padding:10px 14px; min-width:100px;">
+        <div class="metric-label">Today</div>
+        <div class="metric-value" style="font-size:clamp(14px,1.8vw,22px);">5K Run</div>
+        <div class="metric-delta" style="color:var(--blue);">Scheduled</div>
+      </div>
+    </div>
+
+    <!-- Main headline -->
+    <div class="headline">
+      <div class="hl-eyebrow">Athlytic</div>
+      <div class="hl-main">Train <span class="accent-g">smarter.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCENE 2 — FAST CUTS / DATA FLOW
+  ══════════════════════════════════════ -->
+  <div class="scene" id="s2">
+    <div class="s2-grid" id="s2grid">
+      <!-- 6 cells populated by JS -->
+    </div>
+
+    <!-- Overlay text -->
+    <div class="scene-headline" style="bottom:8%;">
+      <div class="sh-tag">Everything. In One Place.</div>
+      <div class="sh-main">Track workouts, running, nutrition, recovery, and goals.</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCENE 3 — DASHBOARD
+  ══════════════════════════════════════ -->
+  <div class="scene" id="s3">
+    <div class="grid-bg" style="opacity:0.3;"></div>
+
+    <svg width="0" height="0">
+      <defs>
+        <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#00ff88"/>
+          <stop offset="100%" stop-color="#0ea5ff"/>
+        </linearGradient>
+        <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#00ff88" stop-opacity="0"/>
+          <stop offset="40%" stop-color="#00ff88"/>
+          <stop offset="100%" stop-color="#0ea5ff"/>
+        </linearGradient>
+      </defs>
+    </svg>
+
+    <div class="dashboard" id="dashboard">
+
+      <!-- CARD: Performance Score (row 2, col 1 spans 2 rows) -->
+      <div class="glass-card card-accent-g row-span-2" style="grid-column:1; grid-row:2/4; display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <div class="metric-label">Performance Score</div>
+          <div class="score-ring-wrap">
+            <div class="score-ring">
+              <svg viewBox="0 0 90 90" width="100%" height="100%">
+                <circle cx="45" cy="45" r="40" class="ring-track"/>
+                <circle cx="45" cy="45" r="40" class="ring-fill"/>
+              </svg>
+              <div class="score-num">84</div>
+            </div>
+          </div>
+          <div class="metric-delta" style="text-align:center;">↑ +6 this week</div>
+        </div>
+        <div>
+          <div class="metric-label" style="margin-top:10px;">Weekly Load</div>
+          <div id="week-bars"></div>
+        </div>
+      </div>
+
+      <!-- CARD: VO2 Max -->
+      <div class="glass-card card-accent-b" style="grid-column:2; grid-row:2;">
+        <div class="metric-label">VO2 Max</div>
+        <div class="metric-value">52.4 <span class="metric-unit">ml/kg</span></div>
+        <div class="metric-delta">↑ Excellent range</div>
+        <svg class="mini-chart" viewBox="0 0 120 40" preserveAspectRatio="none">
+          <polyline points="0,35 20,28 40,30 60,20 80,18 100,12 120,8"
+            fill="none" stroke="url(#lineGrad)" stroke-width="2" class="pace-line"/>
+          <polyline points="0,35 20,28 40,30 60,20 80,18 100,12 120,8 120,40 0,40"
+            fill="url(#lineGrad)" opacity="0.08"/>
+        </svg>
+      </div>
+
+      <!-- CARD: Pace -->
+      <div class="glass-card" style="grid-column:3; grid-row:2;">
+        <div class="metric-label">Best Pace</div>
+        <div class="metric-value">4:32 <span class="metric-unit">/km</span></div>
+        <div class="metric-delta" style="color:var(--green);">↑ 18s faster</div>
+        <svg class="mini-chart" viewBox="0 0 120 40" preserveAspectRatio="none">
+          <polyline points="0,38 20,32 40,35 60,28 80,22 100,16 120,10"
+            fill="none" stroke="rgba(0,255,136,0.6)" stroke-width="2" class="pace-line" style="animation-delay:0.2s;"/>
+        </svg>
+      </div>
+
+      <!-- CARD: Recovery -->
+      <div class="glass-card" style="grid-column:2; grid-row:3;">
+        <div class="metric-label">Recovery</div>
+        <div class="metric-value">78<span class="metric-unit">%</span></div>
+        <div class="metric-delta" style="color:var(--blue);">Sleep: 7h 40m</div>
+      </div>
+
+      <!-- CARD: Coach Insight -->
+      <div class="glass-card" style="grid-column:3; grid-row:3;">
+        <div class="metric-label"><span class="coach-avatar">RC</span>Coach</div>
+        <div class="coach-note">Increase long run to 12K. VO2 trending well — add intervals Tue/Thu.</div>
+      </div>
+
+      <!-- TOP ROW HEADER CARD -->
+      <div class="glass-card span-3" style="grid-row:1; padding: clamp(8px,1.2vw,14px);">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:clamp(6px,1vw,12px);">
+            <div class="logo-icon" style="width:clamp(20px,3vw,36px); height:clamp(20px,3vw,36px); border-radius:8px; font-size:clamp(10px,1.5vw,18px);">⚡</div>
+            <div>
+              <div style="font-size:clamp(11px,1.5vw,18px); font-weight:700; color:#fff;">Athlytic</div>
+              <div style="font-size:clamp(8px,0.9vw,11px); color:var(--text-muted); font-family:'Inter',sans-serif;">Performance OS</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:clamp(6px,1vw,14px); align-items:center;">
+            <div style="text-align:right;">
+              <div class="metric-label">This Month</div>
+              <div style="font-size:clamp(10px,1.3vw,16px); font-weight:600; color:var(--green);">248 km</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="metric-label">Workouts</div>
+              <div style="font-size:clamp(10px,1.3vw,16px); font-weight:600; color:var(--blue);">18</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="metric-label">Streak</div>
+              <div style="font-size:clamp(10px,1.3vw,16px); font-weight:600; color:#fff;">14d 🔥</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scene-headline" style="bottom:4%;">
+      <div class="sh-tag">Your entire performance in one view</div>
+      <div class="sh-main">One performance OS.</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCENE 4 — COACH + ATHLETE
+  ══════════════════════════════════════ -->
+  <div class="scene" id="s4">
+    <div class="grid-bg" style="opacity:0.2;"></div>
+
+    <div class="split-scene">
+      <!-- Coach -->
+      <div class="split-panel left">
+        <div class="person-badge">Coach</div>
+        <div class="tablet-frame" id="tablet">
+          <div class="metric-label" style="margin-bottom:8px;">Athlete Progress</div>
+          <div id="tablet-content"></div>
+        </div>
+      </div>
+
+      <div class="divider-v"></div>
+
+      <!-- Athlete -->
+      <div class="split-panel right">
+        <div class="person-badge">Athlete</div>
+        <div class="device-frame" id="phone">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="font-size:clamp(9px,1.1vw,13px); font-weight:600; color:var(--green);">Today</div>
+            <div style="font-size:clamp(8px,0.9vw,11px); color:var(--text-muted);">Mon</div>
+          </div>
+          <div id="phone-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scene-headline" style="bottom:6%;">
+      <div class="sh-tag">Teamwork, simplified</div>
+      <div class="sh-main">Built for athletes and coaches.</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCENE 5 — PRICING
+  ══════════════════════════════════════ -->
+  <div class="scene" id="s5">
+    <div class="grid-bg"></div>
+
+    <div class="pricing-grid">
+      <!-- Free -->
+      <div class="plan-card" style="opacity:0; animation:fadeSlideUp 0.5s ease 0.2s forwards;">
+        <div class="plan-name">Free</div>
+        <div class="plan-price free">₹0</div>
+        <div class="plan-feature">Workout logging</div>
+        <div class="plan-feature">Basic analytics</div>
+        <div class="plan-feature">5 goals</div>
+        <div class="plan-feature">Mobile app</div>
+        <div style="margin-top:auto; padding-top:12px;">
+          <div style="width:100%; height:1px; background:linear-gradient(90deg, transparent, var(--glass-border), transparent); margin-bottom:10px;"></div>
+          <div class="metric-label" style="color:var(--green);">Always free</div>
+        </div>
+      </div>
+
+      <!-- Pro -->
+      <div class="plan-card featured" style="opacity:0; animation:fadeSlideUp 0.5s ease 0.35s forwards;">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price pro">₹499<span>/mo</span></div>
+        <div class="plan-feature blue">Advanced analytics</div>
+        <div class="plan-feature blue">AI recommendations</div>
+        <div class="plan-feature blue">Coach connection</div>
+        <div class="plan-feature blue">VO2 & HRV tracking</div>
+        <div class="plan-feature blue">Unlimited goals</div>
+      </div>
+
+      <!-- Yearly -->
+      <div class="plan-card" style="opacity:0; animation:fadeSlideUp 0.5s ease 0.5s forwards; border-color:rgba(0,255,136,0.2);">
+        <div class="plan-name">Yearly</div>
+        <div class="plan-price yearly">₹3,999<span>/yr</span></div>
+        <div style="font-family:'Inter',sans-serif; font-size:clamp(8px,0.9vw,11px); color:var(--green); margin-bottom:4px;">Save 33%</div>
+        <div class="plan-feature">Everything in Pro</div>
+        <div class="plan-feature">Priority support</div>
+        <div class="plan-feature">Beta features</div>
+        <div class="plan-feature">Export data</div>
+      </div>
+
+      <!-- Student Pro -->
+      <div class="plan-card" style="opacity:0; animation:fadeSlideUp 0.5s ease 0.65s forwards; border-color:rgba(167,139,250,0.2);">
+        <div class="plan-name">Student Pro</div>
+        <div class="plan-price student">₹199<span>/mo</span></div>
+        <div style="font-family:'Inter',sans-serif; font-size:clamp(8px,0.9vw,11px); color:#a78bfa; margin-bottom:4px;">Verify with .edu</div>
+        <div class="plan-feature purple">All Pro features</div>
+        <div class="plan-feature purple">Team workouts</div>
+        <div class="plan-feature purple">College leagues</div>
+        <div class="plan-feature purple">Coach portal</div>
+      </div>
+    </div>
+
+    <div class="scene-headline" style="bottom:6%;">
+      <div class="sh-tag">No lock-in. No pressure.</div>
+      <div class="sh-main">Start free. Upgrade when you're ready to improve faster.</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCENE 6 — HERO FINAL
+  ══════════════════════════════════════ -->
+  <div class="scene" id="s6">
+    <div class="grid-bg"></div>
+
+    <!-- Stadium lights -->
+    <div class="stadium-lights" id="stadiumLights"></div>
+
+    <!-- Runner track -->
+    <div class="runner-track"></div>
+    <div class="runner-trail"></div>
+    <div class="runner-dot"></div>
+
+    <!-- Particles -->
+    <div id="s6-particles"></div>
+
+    <!-- Main logo -->
+    <div class="logo-hero">
+      <div class="logo-mark">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-wordmark">Athlytic</div>
+      </div>
+      <div class="tagline-hero">
+        <span>Train.</span> &nbsp;Recover.&nbsp; <span>Improve.</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /stage -->
+
+<script>
+const SCENES = ['s1','s2','s3','s4','s5','s6'];
+const DURATIONS = [5500, 6000, 7000, 6500, 6000, 7000]; // ms each scene
+let current = 0;
+let timer = null;
+let progressTimer = null;
+let progressStart = 0;
+let isRunning = true;
+
+// ─── DOTS ───
+const dotsEl = document.getElementById('dots');
+SCENES.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.id = 'dot-' + i;
+  dotsEl.appendChild(d);
+});
+
+// ─── PROGRESS ───
+function startProgress(duration) {
+  const bar = document.getElementById('progress');
+  progressStart = performance.now();
+  cancelAnimationFrame(progressTimer);
+  function step(now) {
+    const pct = Math.min((now - progressStart) / duration * 100, 100);
+    bar.style.width = pct + '%';
+    if (pct < 100) progressTimer = requestAnimationFrame(step);
+  }
+  progressTimer = requestAnimationFrame(step);
+}
+
+// ─── SHOW SCENE ───
+function showScene(idx) {
+  SCENES.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.remove('active');
+    document.getElementById('dot-' + i).classList.remove('active');
+  });
+
+  current = idx;
+  const el = document.getElementById(SCENES[idx]);
+  el.classList.add('active');
+  document.getElementById('dot-' + idx).classList.add('active');
+
+  startProgress(DURATIONS[idx]);
+  buildScene(idx);
+  playSceneAudio(idx);
+
+  clearTimeout(timer);
+  if (idx < SCENES.length - 1) {
+    timer = setTimeout(() => showScene(idx + 1), DURATIONS[idx]);
+  } else {
+    setTimeout(() => {
+      document.getElementById('btn-skip').style.display = 'none';
+      document.getElementById('btn-replay').style.display = 'block';
+    }, 2000);
+  }
+}
+
+// ─── BUILD SCENE CONTENT ───
+function buildScene(idx) {
+  if (idx === 0) buildS1();
+  if (idx === 1) buildS2();
+  if (idx === 2) buildS3();
+  if (idx === 3) buildS4();
+  if (idx === 5) buildS6();
+}
+
+// ── S1: Particles ──
+function buildS1() {
+  const c = document.getElementById('s1-particles');
+  c.innerHTML = '';
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `left:${Math.random()*100}%; bottom:${Math.random()*30}%; --drift:${(Math.random()-0.5)*60}px; animation-duration:${3+Math.random()*4}s; animation-delay:${Math.random()*3}s; background:${Math.random()>0.5?'var(--green)':'var(--blue)'}; opacity:${0.3+Math.random()*0.5};`;
+    c.appendChild(p);
+  }
+}
+
+// ── S2: Grid cells ──
+const S2_CELLS = [
+  { icon: '🏃', label: 'Running', value: '8.4', unit: 'km today', bars: [60,80,45,90,70,55,85] },
+  { icon: '💪', label: 'Strength', value: '4', unit: 'workouts', bars: [40,60,80,70,50,90,65] },
+  { icon: '🥗', label: 'Nutrition', value: '2,140', unit: 'kcal', bars: [70,65,80,75,60,85,90] },
+  { icon: '😴', label: 'Recovery', value: '7h 40m', unit: 'sleep', bars: [55,70,65,80,75,60,85] },
+  { icon: '🎯', label: 'Goals', value: '3/5', unit: 'complete', bars: [20,40,60,80,60,100,80] },
+  { icon: '📊', label: 'Dashboard', value: '84', unit: 'score', bars: [60,65,70,72,75,80,84] },
+];
+
+function buildS2() {
+  const grid = document.getElementById('s2grid');
+  grid.innerHTML = '';
+  S2_CELLS.forEach((cell, i) => {
+    const div = document.createElement('div');
+    div.className = 's2-cell';
+    div.style.background = i % 2 === 0 ? 'rgba(0,255,136,0.02)' : 'rgba(14,165,255,0.02)';
+    const inner = document.createElement('div');
+    inner.className = 's2-cell-inner';
+    inner.style.animationDelay = (i * 0.12) + 's';
+
+    const barsHtml = cell.bars.map((h, bi) =>
+      `<div class="spark-bar" style="height:${h}%; animation-delay:${bi*0.06 + i*0.12}s; background:${i%2===0?'var(--green)':'var(--blue)'};"></div>`
+    ).join('');
+
+    inner.innerHTML = `
+      <div class="cell-icon" style="filter:drop-shadow(0 0 10px ${i%2===0?'var(--green)':'var(--blue)'})">${cell.icon}</div>
+      <div class="cell-label" style="color:${i%2===0?'var(--green)':'var(--blue)'}">${cell.label}</div>
+      <div class="cell-value">${cell.value} <span class="cell-unit">${cell.unit}</span></div>
+      <div class="spark-bars">${barsHtml}</div>
+    `;
+    div.appendChild(inner);
+    grid.appendChild(div);
+  });
+}
+
+// ── S3: Dashboard bars ──
+function buildS3() {
+  const barsEl = document.getElementById('week-bars');
+  if (!barsEl) return;
+  barsEl.innerHTML = '';
+  const days = [['M',0.8],['T',0.4],['W',0.9],['T',0.6],['F',0.7],['S',1.0],['S',0.3]];
+  days.forEach(([d, v], i) => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <div class="bar-day">${d}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${v*100}%; background:${v>0.8?'var(--green)':'rgba(0,255,136,0.5)'}; animation-delay:${i*0.1+0.3}s;"></div></div>
+    `;
+    barsEl.appendChild(row);
+  });
+}
+
+// ── S4: Coach & Athlete devices ──
+function buildS4() {
+  const tablet = document.getElementById('tablet-content');
+  const phone = document.getElementById('phone-content');
+
+  if (tablet) {
+    tablet.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        ${['Abhay Singh','Priya Mehta','Rohan Das'].map((name, i) => `
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 8px; background:var(--glass); border:1px solid var(--glass-border); border-radius:8px; opacity:0; animation:fadeSlideUp 0.4s ease ${0.4+i*0.15}s forwards;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div style="width:clamp(18px,2.5vw,28px); height:clamp(18px,2.5vw,28px); border-radius:50%; background:linear-gradient(135deg, var(--green), var(--blue)); display:flex; align-items:center; justify-content:center; font-size:clamp(7px,0.9vw,10px); font-weight:700; color:#000;">${name[0]}</div>
+              <div>
+                <div style="font-size:clamp(8px,1vw,12px); font-weight:600; color:#fff;">${name}</div>
+                <div style="font-size:clamp(7px,0.8vw,10px); color:var(--text-muted); font-family:'Inter',sans-serif;">${['Score: 84 ↑','Score: 71 →','Score: 92 ↑'][i]}</div>
+              </div>
+            </div>
+            <div style="font-size:clamp(8px,0.9vw,11px); color:${['var(--green)','var(--text-muted)','var(--blue)'][i]};">${['Excellent','Average','Peak'][i]}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div style="margin-top:8px; padding:8px; background:rgba(14,165,255,0.06); border:1px solid rgba(14,165,255,0.15); border-radius:8px; opacity:0; animation:fadeSlideUp 0.4s ease 0.9s forwards;">
+        <div style="font-size:clamp(7px,0.9vw,11px); color:var(--blue); font-family:'Inter',sans-serif; font-weight:500;">📋 Coach Note → Abhay</div>
+        <div style="font-size:clamp(7px,0.85vw,10px); color:var(--text-muted); font-family:'Inter',sans-serif; margin-top:3px;">Increase interval intensity by 10% next week.</div>
+      </div>
+    `;
+  }
+
+  if (phone) {
+    phone.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:clamp(6px,1vw,10px);">
+        <div style="opacity:0; animation:fadeSlideUp 0.4s ease 0.5s forwards;">
+          <div class="metric-label">Today's Workout</div>
+          <div style="font-size:clamp(13px,1.8vw,20px); font-weight:700; color:var(--green);">Interval Run</div>
+          <div style="font-size:clamp(8px,0.9vw,11px); color:var(--text-muted); font-family:'Inter',sans-serif;">8×400m @ 4:20 pace</div>
+        </div>
+        <div style="height:1px; background:var(--glass-border);"></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; opacity:0; animation:fadeSlideUp 0.4s ease 0.65s forwards;">
+          ${[['Distance','6.8 km'],['Pace','4:32/km'],['Calories','520'],['HR Avg','156 bpm']].map(([l,v]) => `
+            <div style="background:var(--glass); border:1px solid var(--glass-border); border-radius:8px; padding:6px 8px;">
+              <div class="metric-label" style="font-size:clamp(6px,0.8vw,9px);">${l}</div>
+              <div style="font-size:clamp(10px,1.4vw,15px); font-weight:700; color:#fff;">${v}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div style="padding:6px 8px; background:rgba(0,255,136,0.06); border:1px solid rgba(0,255,136,0.15); border-radius:8px; opacity:0; animation:fadeSlideUp 0.4s ease 0.8s forwards;">
+          <div style="font-size:clamp(7px,0.85vw,10px); color:var(--green); font-weight:600;">💬 Coach: Rohan</div>
+          <div style="font-size:clamp(6px,0.8vw,9px); color:var(--text-muted); font-family:'Inter',sans-serif; margin-top:2px;">Great session! Push the last 2 intervals harder.</div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// ── S6: Stadium & Particles ──
+function buildS6() {
+  const lights = document.getElementById('stadiumLights');
+  lights.innerHTML = '';
+  const angles = [-30, -15, 0, 15, 30, -25, 25, -10, 10];
+  angles.forEach((angle, i) => {
+    const beam = document.createElement('div');
+    beam.className = 'light-beam';
+    beam.style.cssText = `left:${10+i*10}%; top:0; transform:rotate(${angle}deg); animation-delay:${i*0.3}s; animation-duration:${3+i*0.2}s; opacity:${0.3+Math.random()*0.4};`;
+    lights.appendChild(beam);
+  });
+
+  const pc = document.getElementById('s6-particles');
+  pc.innerHTML = '';
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `left:${Math.random()*100}%; bottom:${Math.random()*20}%; --drift:${(Math.random()-0.5)*80}px; animation-duration:${4+Math.random()*5}s; animation-delay:${Math.random()*4}s; width:${Math.random()>0.7?'3px':'2px'}; height:${Math.random()>0.7?'3px':'2px'}; background:${Math.random()>0.4?'var(--green)':'var(--blue)'}; opacity:${0.2+Math.random()*0.6};`;
+    pc.appendChild(p);
+  }
+}
+
+// ════════════════════════════════════════════════
+// AUDIO ENGINE — Web Audio API, fully synthesized
+// ════════════════════════════════════════════════
+let AC = null;
+let masterGain = null;
+let isMuted = false;
+let beatInterval = null;
+let padNodes = [];
+let lfoNodes = [];
+
+function initAudio() {
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = AC.createGain();
+  masterGain.gain.value = 0.7;
+  masterGain.connect(AC.destination);
+}
+
+// ── Utility: make a reverb convolver ──
+function makeReverb(dur = 2.5, decay = 2.0) {
+  const len = AC.sampleRate * dur;
+  const buf = AC.createBuffer(2, len, AC.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+  }
+  const cv = AC.createConvolver();
+  cv.buffer = buf;
+  return cv;
+}
+
+// ── Utility: play a single tone ──
+function playTone(freq, type, startTime, dur, gainVal, destination, detune = 0) {
+  const osc = AC.createOscillator();
+  const g = AC.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  osc.detune.value = detune;
+  g.gain.setValueAtTime(0, startTime);
+  g.gain.linearRampToValueAtTime(gainVal, startTime + 0.04);
+  g.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+  osc.connect(g);
+  g.connect(destination);
+  osc.start(startTime);
+  osc.stop(startTime + dur + 0.05);
+}
+
+// ── Utility: noise burst (hi-hat / kick layer) ──
+function playNoise(startTime, dur, gainVal, hipass, destination) {
+  const buf = AC.createBuffer(1, AC.sampleRate * dur, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = AC.createBufferSource();
+  src.buffer = buf;
+  const filt = AC.createBiquadFilter();
+  filt.type = 'highpass';
+  filt.frequency.value = hipass;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(gainVal, startTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+  src.connect(filt);
+  filt.connect(g);
+  g.connect(destination);
+  src.start(startTime);
+  src.stop(startTime + dur + 0.01);
+}
+
+// ── Ambient pad: layered detuned saws through reverb ──
+function startAmbientPad(rootFreq, gainVal = 0.12) {
+  const rev = makeReverb(3.5, 2.5);
+  const revGain = AC.createGain();
+  revGain.gain.value = 0.5;
+  rev.connect(revGain);
+  revGain.connect(masterGain);
+
+  const dryGain = AC.createGain();
+  dryGain.gain.value = 0.3;
+  dryGain.connect(masterGain);
+
+  // Low-pass filter for warmth
+  const lpf = AC.createBiquadFilter();
+  lpf.type = 'lowpass';
+  lpf.frequency.value = 1800;
+  lpf.Q.value = 0.8;
+  lpf.connect(rev);
+  lpf.connect(dryGain);
+
+  const chords = [0, 3, 7, 10]; // minor 7th
+  const oscs = [];
+  chords.forEach((semi, i) => {
+    const freq = rootFreq * Math.pow(2, semi / 12);
+    [0, -8, 8].forEach(detune => {
+      const osc = AC.createOscillator();
+      const g = AC.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      osc.detune.value = detune;
+      g.gain.setValueAtTime(0, AC.currentTime);
+      g.gain.linearRampToValueAtTime(gainVal / chords.length, AC.currentTime + 2);
+      osc.connect(g);
+      g.connect(lpf);
+      osc.start();
+      oscs.push({ osc, g });
+    });
+  });
+
+  // LFO for subtle pad movement
+  const lfo = AC.createOscillator();
+  const lfoGain = AC.createGain();
+  lfo.frequency.value = 0.15;
+  lfoGain.gain.value = 200;
+  lfo.connect(lfoGain);
+  lfoGain.connect(lpf.frequency);
+  lfo.start();
+
+  padNodes = [...oscs, { osc: lfo, g: lfoGain }];
+  return oscs;
+}
+
+function stopPad(fadeTime = 1.5) {
+  padNodes.forEach(({ osc, g }) => {
+    try {
+      g.gain.linearRampToValueAtTime(0, AC.currentTime + fadeTime);
+      osc.stop(AC.currentTime + fadeTime + 0.1);
+    } catch(e) {}
+  });
+  padNodes = [];
+}
+
+// ── Scene-specific music layers ──
+
+// S1 — Sparse intro pad + heartbeat pulse
+function audioS1() {
+  startAmbientPad(55, 0.1); // A1
+
+  // Heartbeat-style low thud
+  const bpm = 72;
+  const beat = 60 / bpm;
+  let t = AC.currentTime + 0.5;
+  const sub = AC.createGain();
+  sub.gain.value = 1;
+  sub.connect(masterGain);
+
+  function thud(time) {
+    const osc = AC.createOscillator();
+    const g = AC.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(80, time);
+    osc.frequency.exponentialRampToValueAtTime(40, time + 0.15);
+    g.gain.setValueAtTime(0.5, time);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.3);
+    osc.connect(g); g.connect(sub);
+    osc.start(time); osc.stop(time + 0.35);
+  }
+  // double heartbeat pattern
+  for (let i = 0; i < 8; i++) {
+    const base = t + i * beat * 2;
+    thud(base);
+    thud(base + 0.22);
+  }
+
+  // Rising tension tone
+  const riser = AC.createOscillator();
+  const riserG = AC.createGain();
+  riser.type = 'sine';
+  riser.frequency.setValueAtTime(220, AC.currentTime + 4);
+  riser.frequency.exponentialRampToValueAtTime(440, AC.currentTime + 5.5);
+  riserG.gain.setValueAtTime(0, AC.currentTime + 4);
+  riserG.gain.linearRampToValueAtTime(0.15, AC.currentTime + 5);
+  riserG.gain.linearRampToValueAtTime(0, AC.currentTime + 5.5);
+  riser.connect(riserG); riserG.connect(masterGain);
+  riser.start(AC.currentTime + 4); riser.stop(AC.currentTime + 5.8);
+}
+
+// S2 — Driving 4/4 beat + energetic arp
+function audioS2() {
+  stopPad(0.8);
+  startAmbientPad(65, 0.08); // slightly higher root
+
+  const bpm = 128;
+  const beat = 60 / bpm;
+  const t0 = AC.currentTime + 0.1;
+
+  const compressor = AC.createDynamicsCompressor();
+  compressor.threshold.value = -18;
+  compressor.ratio.value = 4;
+  compressor.connect(masterGain);
+
+  // Kick drum
+  function kick(time) {
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(150, time);
+    o.frequency.exponentialRampToValueAtTime(35, time + 0.12);
+    g.gain.setValueAtTime(0.8, time);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.25);
+    o.connect(g); g.connect(compressor);
+    o.start(time); o.stop(time + 0.3);
+    playNoise(time, 0.05, 0.1, 2000, compressor);
+  }
+
+  // Snare
+  function snare(time) {
+    playNoise(time, 0.18, 0.35, 1500, compressor);
+    playTone(180, 'triangle', time, 0.1, 0.2, compressor);
+  }
+
+  // Hi-hat
+  function hat(time, vol = 0.15) {
+    playNoise(time, 0.04, vol, 8000, compressor);
+  }
+
+  // Arp notes (pentatonic energy)
+  const arpNotes = [110, 138.6, 164.8, 220, 246.9, 329.6];
+  function arp(time, noteIdx) {
+    playTone(arpNotes[noteIdx % arpNotes.length], 'square', time, 0.08, 0.06, compressor);
+  }
+
+  const bars = Math.ceil(6000 / (beat * 4 * 1000));
+  for (let bar = 0; bar < bars + 1; bar++) {
+    for (let b = 0; b < 4; b++) {
+      const t = t0 + (bar * 4 + b) * beat;
+      if (b === 0 || b === 2) kick(t);
+      if (b === 1 || b === 3) snare(t);
+      hat(t); hat(t + beat * 0.5, 0.08);
+      if (b % 2 === 0) arp(t + beat * 0.25, bar * 4 + b);
+    }
+  }
+}
+
+// S3 — Epic cinematic build: lush pad + melodic lead
+function audioS3() {
+  stopPad(0.5);
+  startAmbientPad(44, 0.14); // lower, fuller
+
+  const rev = makeReverb(4, 2);
+  const revG = AC.createGain(); revG.gain.value = 0.6;
+  rev.connect(revG); revG.connect(masterGain);
+
+  // Melodic lead (inspiring, upward phrase)
+  const melody = [
+    [220,0.3],[261.6,0.3],[329.6,0.4],[392,0.4],
+    [440,0.6],[523.2,0.8],[659.2,1.2]
+  ];
+  let mt = AC.currentTime + 0.4;
+  melody.forEach(([freq, dur]) => {
+    playTone(freq, 'triangle', mt, dur + 0.1, 0.18, rev);
+    playTone(freq, 'sine', mt, dur + 0.1, 0.08, masterGain);
+    mt += dur;
+  });
+
+  // Sub bass pulse
+  const bpm = 100;
+  const beat = 60 / bpm;
+  const bassNotes = [44, 44, 55, 44, 49, 55, 44, 44];
+  bassNotes.forEach((freq, i) => {
+    playTone(freq, 'sine', AC.currentTime + 0.1 + i * beat * 0.5, beat * 0.45, 0.25, masterGain);
+  });
+}
+
+// S4 — Calm, focused: minimal pad + subtle rhythm
+function audioS4() {
+  stopPad(0.8);
+  startAmbientPad(55, 0.09);
+
+  const bpm = 90;
+  const beat = 60 / bpm;
+  const t0 = AC.currentTime + 0.2;
+  const comp = AC.createDynamicsCompressor();
+  comp.threshold.value = -20; comp.ratio.value = 3;
+  comp.connect(masterGain);
+
+  for (let i = 0; i < 20; i++) {
+    const t = t0 + i * beat * 0.5;
+    if (i % 4 === 0) {
+      playTone(55, 'sine', t, 0.2, 0.3, comp);
+    }
+    if (i % 8 === 4) {
+      playNoise(t, 0.12, 0.2, 2000, comp);
+    }
+    playNoise(t, 0.03, 0.08, 9000, comp);
+  }
+
+  // Notification-style UI chime for each card
+  [0.5, 1.0, 1.5, 2.2, 2.9].forEach(delay => {
+    uiChime(AC.currentTime + delay);
+  });
+}
+
+// S5 — Confident, product reveal: punchy + bright
+function audioS5() {
+  stopPad(0.5);
+  startAmbientPad(65.4, 0.1); // C2
+
+  const rev = makeReverb(2, 1.5);
+  const revG = AC.createGain(); revG.gain.value = 0.4;
+  rev.connect(revG); revG.connect(masterGain);
+
+  // Card stagger chimes
+  [0.2, 0.35, 0.5, 0.65].forEach((delay, i) => {
+    const notes = [523.2, 659.2, 783.9, 1046.5];
+    playTone(notes[i], 'sine', AC.currentTime + delay, 0.4, 0.12, rev);
+    playTone(notes[i] * 2, 'sine', AC.currentTime + delay + 0.01, 0.25, 0.04, rev);
+  });
+
+  // Driving pulse
+  const bpm = 110;
+  const beat = 60 / bpm;
+  const comp = AC.createDynamicsCompressor();
+  comp.threshold.value = -18; comp.ratio.value = 4;
+  comp.connect(masterGain);
+  for (let i = 0; i < 24; i++) {
+    const t = AC.currentTime + i * beat * 0.5;
+    if (i % 4 === 0) playTone(55, 'sine', t, 0.18, 0.28, comp);
+    playNoise(t, 0.025, 0.06, 10000, comp);
+  }
+}
+
+// S6 — Full cinematic climax: swell + triumphant chord
+function audioS6() {
+  stopPad(0.3);
+
+  const rev = makeReverb(5, 1.8);
+  const revG = AC.createGain(); revG.gain.value = 0.65;
+  rev.connect(revG); revG.connect(masterGain);
+
+  const dryG = AC.createGain(); dryG.gain.value = 0.35;
+  dryG.connect(masterGain);
+
+  // White noise swell / crowd roar
+  const noiseLen = 4;
+  const nbuf = AC.createBuffer(1, AC.sampleRate * noiseLen, AC.sampleRate);
+  const nd = nbuf.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  const nsrc = AC.createBufferSource(); nsrc.buffer = nbuf;
+  const nfilt = AC.createBiquadFilter(); nfilt.type = 'bandpass'; nfilt.frequency.value = 900; nfilt.Q.value = 0.5;
+  const ng = AC.createGain();
+  ng.gain.setValueAtTime(0, AC.currentTime);
+  ng.gain.linearRampToValueAtTime(0.18, AC.currentTime + 1.5);
+  ng.gain.linearRampToValueAtTime(0.08, AC.currentTime + 3.5);
+  nsrc.connect(nfilt); nfilt.connect(ng); ng.connect(rev);
+  nsrc.start(); nsrc.stop(AC.currentTime + noiseLen);
+
+  // Triumphant chord: A major (A C# E A)
+  const chordFreqs = [110, 138.6, 164.8, 220, 277.2, 329.6, 440];
+  chordFreqs.forEach((f, i) => {
+    const delay = i * 0.06;
+    playTone(f, 'sawtooth', AC.currentTime + delay, 5, 0.06, rev, i % 2 === 0 ? -5 : 5);
+    playTone(f, 'sine', AC.currentTime + delay, 4, 0.04, dryG);
+  });
+
+  // Melodic top line (fanfare)
+  const fanfare = [[440,0.25],[523.2,0.25],[659.2,0.5],[880,0.8],[783.9,0.4],[880,1.2]];
+  let ft = AC.currentTime + 0.6;
+  fanfare.forEach(([freq, dur]) => {
+    playTone(freq, 'triangle', ft, dur, 0.15, rev);
+    ft += dur;
+  });
+
+  // Final stadium boom kick
+  [0.1, 0.6].forEach(d => {
+    const t = AC.currentTime + d;
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(120, t);
+    o.frequency.exponentialRampToValueAtTime(30, t + 0.3);
+    g.gain.setValueAtTime(0.9, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(g); g.connect(masterGain);
+    o.start(t); o.stop(t + 0.6);
+  });
+}
+
+// ── UI chime for transitions / card reveals ──
+function uiChime(time = null) {
+  if (!AC || isMuted) return;
+  const t = time || AC.currentTime;
+  const rev = makeReverb(1, 2);
+  const rg = AC.createGain(); rg.gain.value = 0.3;
+  rev.connect(rg); rg.connect(masterGain);
+  playTone(1046.5, 'sine', t, 0.3, 0.06, rev);
+  playTone(1318.5, 'sine', t + 0.08, 0.25, 0.05, rev);
+  playTone(2093, 'sine', t + 0.16, 0.2, 0.04, rev);
+}
+
+// ── Scene → audio map ──
+const SCENE_AUDIO = [audioS1, audioS2, audioS3, audioS4, audioS5, audioS6];
+
+function playSceneAudio(idx) {
+  if (!AC || isMuted) return;
+  try { SCENE_AUDIO[idx](); } catch(e) {}
+}
+
+// ── Master fade out ──
+function fadeOutAll(dur = 1.5) {
+  if (!AC || !masterGain) return;
+  masterGain.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+}
+
+// ── Toggle mute ──
+function toggleMute() {
+  if (!AC) return;
+  isMuted = !isMuted;
+  masterGain.gain.cancelScheduledValues(AC.currentTime);
+  if (isMuted) {
+    masterGain.gain.linearRampToValueAtTime(0, AC.currentTime + 0.3);
+    document.getElementById('mute-icon').textContent = '🔇';
+    document.getElementById('btn-mute').childNodes[1].textContent = ' Unmute';
+  } else {
+    masterGain.gain.linearRampToValueAtTime(0.7, AC.currentTime + 0.3);
+    document.getElementById('mute-icon').textContent = '🔊';
+    document.getElementById('btn-mute').childNodes[1].textContent = ' Mute';
+  }
+}
+
+// ─── GATE: user click to start ───
+function startWithAudio() {
+  const gate = document.getElementById('audio-gate');
+  gate.style.transition = 'opacity 0.5s';
+  gate.style.opacity = '0';
+  gate.style.pointerEvents = 'none';
+  setTimeout(() => gate.remove(), 600);
+
+  initAudio();
+  document.getElementById('btn-skip').style.display = 'block';
+  document.getElementById('btn-mute').style.display = 'flex';
+
+  showScene(0);
+}
+
+// ─── CONTROLS ───
+function skipToEnd() {
+  clearTimeout(timer);
+  cancelAnimationFrame(progressTimer);
+  fadeOutAll(0.6);
+  setTimeout(() => {
+    if (AC && masterGain) { masterGain.gain.cancelScheduledValues(AC.currentTime); masterGain.gain.value = isMuted ? 0 : 0.7; }
+    showScene(5);
+  }, 600);
+  document.getElementById('btn-skip').style.display = 'none';
+}
+
+function replayVideo() {
+  document.getElementById('btn-replay').style.display = 'none';
+  document.getElementById('btn-skip').style.display = 'block';
+  document.getElementById('progress').style.width = '0%';
+  stopPad(0.3);
+  if (AC && masterGain) { masterGain.gain.cancelScheduledValues(AC.currentTime); masterGain.gain.value = isMuted ? 0 : 0.7; }
+  showScene(0);
+}
+
+// ─── DO NOT auto-kick-off — wait for gate click ───
+</script>
+</body>
+</html>

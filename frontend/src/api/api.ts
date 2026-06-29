@@ -87,6 +87,9 @@ export const integrationApi = {
 export const coachApi = {
   getAthletes: () => api.get("/coach/athletes"),
   updateNotes: (athleteId: string, notes: string) => api.put(`/coach/athletes/${athleteId}/notes`, { notes }),
+  getAthletePerformance: (athleteId: string) => api.get(`/coach/athletes/${athleteId}/performance`),
+  assignGoal: (athleteId: string, goalPayload: Record<string, unknown>) => api.post(`/coach/athletes/${athleteId}/goals`, goalPayload),
+  updateFeedback: (athleteId: string, feedback: string) => api.put(`/coach/athletes/${athleteId}/feedback`, { feedback }),
 };
 
 export const biomarkerApi = {

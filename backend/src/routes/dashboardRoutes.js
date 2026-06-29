@@ -1,6 +1,7 @@
 const express = require("express");
-const { dashboardSummary, goals, nutritionLogs, runningSessions, sleepLogs, workouts } = require("../data/sampleData");
+const { dashboardSummary, goals, nutritionLogs, runningSessions, sleepLogs, workouts, sampleUsers } = require("../data/sampleData");
 const { protect } = require("../middleware/auth");
+const User = require("../models/User");
 const Goal = require("../models/Goal");
 const NutritionLog = require("../models/NutritionLog");
 const RunningData = require("../models/RunningData");
@@ -10,6 +11,7 @@ const BiomarkerLog = require("../models/BiomarkerLog");
 const { listRecords } = require("../utils/persistence");
 const { getCurrentUser } = require("../utils/currentUser");
 const { buildMacroPlan } = require("../utils/macroPlanner");
+const { isDatabaseConnected } = require("../config/db");
 const {
   filterRecordsForDay,
   sumNutrition,
@@ -98,6 +100,9 @@ router.get("/athlete", protect, async (req, res) => {
   const strengthSeries = buildLastNDaySeries(scopedWorkouts, 7, sumWeightLifted);
 
   const aiInsights = [];
+  if (currentUser?.profile?.coachFeedback) {
+    aiInsights.push(`💬 Coach Note: "${currentUser.profile.coachFeedback}"`);
+  }
   if (todayNutrition.calories === 0 && todayWorkouts.length === 0 && todayDistanceKm === 0) {
     aiInsights.push("No activity logged for today yet. Start with one meal, workout, or run to begin tracking.");
   }
@@ -329,8 +334,116 @@ router.get("/notifications", protect, async (req, res) => {
   res.json(notifications);
 });
 
-router.get("/coach", protect, (_req, res) => {
-  res.json(dashboardSummary.coach);
+router.get("/coach", protect, async (req, res) => {
+  let athletesList = [];
+  let workoutsList = [];
+  let runningList = [];
+  let sleepList = [];
+  let goalsList = [];
+
+  if (isDatabaseConnected()) {
+    athletesList = await User.find({ role: "athlete" });
+    workoutsList = await Workout.find();
+    runningList = await RunningData.find();
+    sleepList = await SleepLog.find();
+    goalsList = await Goal.find();
+  } else {
+    athletesList = sampleUsers.filter((u) => u.role === "athlete");
+    workoutsList = workouts;
+    runningList = runningSessions;
+    sleepList = sleepLogs;
+    goalsList = goals;
+  }
+
+  const monitoredAthletes = athletesList.length;
+  let flaggedAthletesCount = 0;
+  let totalComplianceSum = 0;
+  let complianceCount = 0;
+  const notes = [];
+
+  // Calculate readiness score for each athlete
+  for (const athlete of athletesList) {
+    const athleteId = athlete._id ? String(athlete._id) : athlete.id;
+    const athleteWorkouts = workoutsList.filter((w) => w.athleteId === athleteId);
+    const athleteSleep = sleepList.filter((s) => s.athleteId === athleteId);
+    const athleteGoals = goalsList.filter((g) => g.athleteId === athleteId);
+
+    // Sleep target (default 8)
+    const sleepTarget = 8;
+
+    // Find workouts and sleep in the last 3 days
+    const today = new Date();
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(today.getDate() - 3);
+
+    const recentWorkouts = athleteWorkouts.filter(w => new Date(w.createdAt || w.loggedAt || today) >= threeDaysAgo);
+    const recentSleepLogs = athleteSleep.filter(s => new Date(s.createdAt || s.loggedAt || today) >= threeDaysAgo);
+
+    const readinessScore = calculateReadinessScore({
+      recentSleepLogs,
+      recentWorkouts,
+      sleepTarget,
+      windowDays: 3,
+    });
+
+    const hasInjury = Boolean(athlete.profile?.recentInjuries && athlete.profile.recentInjuries.trim() !== "");
+    const hasIllness = Boolean(athlete.profile?.recentIllness && athlete.profile.recentIllness.trim() !== "");
+
+    let isFlagged = false;
+    if (readinessScore < 70) {
+      isFlagged = true;
+      notes.push(`⚠️ ${athlete.name} has low readiness (${Math.round(readinessScore)}/100). Consider scheduling a recovery day.`);
+    }
+    if (hasInjury) {
+      isFlagged = true;
+      notes.push(`🚨 ${athlete.name} reported a recent injury: "${athlete.profile.recentInjuries}".`);
+    }
+    if (hasIllness) {
+      isFlagged = true;
+      notes.push(`🤒 ${athlete.name} reported a recent illness: "${athlete.profile.recentIllness}".`);
+    }
+
+    if (isFlagged) {
+      flaggedAthletesCount++;
+    }
+
+    // Calculate Goal Compliance
+    if (athleteGoals.length > 0) {
+      const completedGoals = athleteGoals.filter(g => (g.currentValue || 0) >= (g.targetValue || 1)).length;
+      const compliance = (completedGoals / athleteGoals.length) * 100;
+      totalComplianceSum += compliance;
+      complianceCount++;
+
+      if (completedGoals === athleteGoals.length && athleteGoals.length > 0) {
+        notes.push(`🏆 ${athlete.name} completed all active goals!`);
+      }
+    }
+
+    // Check if athlete hasn't logged a workout in 4 days
+    const lastWorkoutDate = athleteWorkouts.reduce((max, w) => {
+      const d = new Date(w.createdAt || w.loggedAt || 0);
+      return d > max ? d : max;
+    }, new Date(0));
+
+    const daysSinceLastWorkout = (today.getTime() - lastWorkoutDate.getTime()) / (1000 * 3600 * 24);
+    if (athleteWorkouts.length > 0 && daysSinceLastWorkout >= 4) {
+      notes.push(`📅 ${athlete.name} has not logged a workout in ${Math.floor(daysSinceLastWorkout)} days.`);
+    }
+  }
+
+  const averageCompliance = complianceCount > 0 ? Math.round(totalComplianceSum / complianceCount) : 80;
+
+  // Add default notice if attention queue is empty
+  if (notes.length === 0) {
+    notes.push("✅ All athletes are fully compliant and recovered. No actions required.");
+  }
+
+  res.json({
+    monitoredAthletes,
+    flaggedAthletes: flaggedAthletesCount,
+    averageCompliance,
+    notes,
+  });
 });
 
 module.exports = router;
